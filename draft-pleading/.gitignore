@@ -1,0 +1,15 @@
+# Python bytecode cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Query input/output files (generated at runtime)
+queries.json
+results.json
+followup_queries.json
+
+# Local user preferences
+.pleading_preferences.json
+
+# Agent rules
+.agents/

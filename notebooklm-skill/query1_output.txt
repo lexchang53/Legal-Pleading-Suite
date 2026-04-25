@@ -1,0 +1,21 @@
+Traceback (most recent call last):
+  File "C:\Users\lex\.gemini\antigravity\skills\notebooklm-skill\scripts\notebook_manager.py", line 42, in _load_library
+    print(f"\U0001f4da Loaded library with {len(self.notebooks)} notebooks")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'cp950' codec can't encode character '\U0001f4da' in position 0: illegal multibyte sequence
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\lex\.gemini\antigravity\skills\notebooklm-skill\scripts\ask_question.py", line 256, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "C:\Users\lex\.gemini\antigravity\skills\notebooklm-skill\scripts\ask_question.py", line 204, in main
+    library = NotebookLibrary()
+  File "C:\Users\lex\.gemini\antigravity\skills\notebooklm-skill\scripts\notebook_manager.py", line 32, in __init__
+    self._load_library()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\lex\.gemini\antigravity\skills\notebooklm-skill\scripts\notebook_manager.py", line 44, in _load_library
+    print(f"\u26a0\ufe0f Error loading library: {e}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'cp950' codec can't encode character '\u26a0' in position 0: illegal multibyte sequence
