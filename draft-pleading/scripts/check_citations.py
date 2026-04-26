@@ -155,7 +155,7 @@ def check_draft(md_path: str) -> tuple[list[dict], list[dict]]:
                     add_violation(
                         'BARE_EVIDENCE', i,
                         stripped,
-                        f'在 {tag} 之前應先說明證據名稱，例如：「……此有○○文件{tag}為憑。」'
+                        f'在 {tag} 之前應先說明證據名稱，例如：「……此有〇〇文件{tag}為憑。」'
                     )
                 elif not has_closing:
                     add_violation(

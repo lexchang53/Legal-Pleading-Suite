@@ -83,6 +83,35 @@ python "scripts/convert_docx_to_odt.py" "<input.docx>" --output "<output.odt>"
 
 ---
 
+## 互動巨集功能 (Tab 升降級)
+
+本 skill 提供一組可選的 **LibreOffice Python 互動巨集**，旨在解決 ODT 檔案中「Tab 鍵無法同步切換清單層級與段落樣式」的限制。此功能預設 **不自動安裝**，需由使用者明確下達指令安裝。
+
+### 功能說明
+
+安裝巨集後，當使用者在 LibreOffice Writer 中編輯含有 `通用_層級1~4` 樣式的 ODT 時：
+- 游標在段落開頭按 **`Tab`**：降一級（同時更改 `NumberingLevel` 與 `ParaStyleName`，如：從 `通用_層級1` 變成 `通用_層級2`）。
+- 游標在段落開頭按 **`Shift+Tab`**：升一級。
+- 游標在段落中間或非目標樣式段落按 Tab/Shift+Tab：維持 LibreOffice 原生行為（插入 Tab 字元或退縮排）。
+
+### 安裝方式
+
+使用者只需執行一次以下指令，即可將巨集安裝至 LibreOffice 的全域 My Macros 中，並自動設定好快捷鍵。安裝後，日後開啟的 **所有** 符合樣式條件的 ODT 檔案皆可使用此功能。
+
+```powershell
+python "scripts/convert_docx_to_odt.py" --install-macros
+```
+
+> **給 AI Agent 的指示**：本功能為選用工具。**執行任何操作前，請先讀取技能目錄下的 `config.json`**。
+> 1. 如果 `tab_macro_installed` 為 `true`，代表使用者已安裝，**請勿再主動提及或建議安裝**。
+> 2. 如果為 `false` (或檔案不存在)，且使用者「主動要求安裝巨集」或「詢問如何解決 ODT Tab 鍵升降級問題」時，你才可協助執行上述指令。執行前，**必須先向使用者說明**：「此動作會將巨集安裝至 LibreOffice 的全域使用者設定檔（My Macros），並修改 Writer 的 Tab/Shift+Tab 快捷鍵綁定。」取得使用者明確同意後，再執行安裝。
+
+**注意**：
+1. 安裝後必須 **重新啟動 LibreOffice Writer** 才會生效。
+2. 由於此動作會修改 LibreOffice 的全域使用者設定檔（綁定快捷鍵），因此預設為不主動執行，需使用者同意。
+
+---
+
 ## 成功條件
 
 只有在以下條件全部成立時，才算成功：

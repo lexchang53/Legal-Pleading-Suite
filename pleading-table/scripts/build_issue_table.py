@@ -5,9 +5,9 @@ build_issue_table.py
 爭點整理狀最終 DOCX 生成腳本。
 
 設計原則：
-- 狀首 / 狀尾移植自 outline-docx 已驗證的邏輯
-- 中文 numbering（一、/（一））透過從 outline-docx/assets/outline-base.docx
-  注入 abstractNum + num 的方式產生，不依賴 table-tmpl.docx 本身的 numbering
+- 狀首 / 狀尾移植自 draft-pleading 已驗證的邏輯
+- 中文 numbering（一、/（一））從 pleading-tmpl.docx 本身反查 numId 與 abstractNumId，
+  建立新的 override num，完全不依賴外部檔案
 - 爭點整理表與聲請調查證據表均由 table_utils 建立
 - 模板含 3 個藍圖表格：
   表格0 = 爭點整理表藍圖
@@ -23,9 +23,10 @@ import sys
 from pathlib import Path
 
 script_dir = Path(__file__).parent
-outline_scripts_dir = script_dir.parent.parent / "outline-docx" / "scripts"
-if str(outline_scripts_dir) not in sys.path:
-    sys.path.insert(0, str(outline_scripts_dir))
+# header_utils 來自 draft-pleading/scripts
+draft_scripts_dir = script_dir.parent.parent / "draft-pleading" / "scripts"
+if str(draft_scripts_dir) not in sys.path:
+    sys.path.insert(0, str(draft_scripts_dir))
 
 import header_utils
 import table_utils
@@ -83,103 +84,68 @@ def _add_keep_props(para) -> None:
 
 def _inject_chinese_numbering(doc: Document) -> int:
     """
-    將 outline-docx/assets/outline-base.docx 的中文 numbering 定義（abstractNum）
-    複製注入到 doc 的 numbering.xml，建立新的 w:num 指向該 abstractNum，
-    回傳新的 num_id（可用於 ilvl=0 → 一、；ilvl=1 →（一））。
+    從已載入的 doc（來自 pleading-tmpl.docx）直接反查通用_層絆1 的 numId 與 abstractNumId，
+    建立新的 w:num（帶 startOverride=1）並回傳新 numId。
+    完全不依賴外部檔案。
     """
-    outline_tmpl = script_dir.parent.parent / "outline-docx" / "assets" / "outline-base.docx"
-    if not outline_tmpl.exists():
-        print(f"[WARN] 找不到 outline-docx 模板：{outline_tmpl}，使用 fallback numId=1")
-        return 1
+    NSMAP_LOCAL = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    ANCHOR_STYLE = "通用_層絆1"
 
-    outline_doc = Document(str(outline_tmpl))
-
-    outline_num_id = None
-    for s in outline_doc.styles:
-        if s.name == ANCHOR_STYLE_OUTLINE or s.style_id == "a8" or repr(s.name) == "'q_h1'":
-            se = s._element
-            sp_pr = se.find(".//w:pPr", NSMAP)
-            if sp_pr is not None:
-                n_pr = sp_pr.find("w:numPr", NSMAP)
-                if n_pr is not None:
-                    nid_el = n_pr.find("w:numId", NSMAP)
-                    if nid_el is not None:
-                        outline_num_id = int(nid_el.get(qn("w:val")))
-                        break
-
-    if outline_num_id is None:
-        for p in outline_doc.paragraphs:
-            if p.style.name == ANCHOR_STYLE_OUTLINE or p.style.style_id == "a8" or repr(p.style.name) == "'q_h1'":
-                p_pr = p._element.pPr
-                if p_pr is not None and p_pr.numPr is not None and p_pr.numPr.numId is not None:
-                    outline_num_id = int(p_pr.numPr.numId.val)
-                    break
-
-    if outline_num_id is None:
-        print("[WARN] 無法從 outline 模板找到 通用_層級1 的 numId，使用 fallback numId=1")
-        return 1
-
-    outline_npart = outline_doc.part.numbering_part.numbering_definitions._numbering
-
-    outline_abstract_num_id = None
-    for ne in outline_npart.findall(".//w:num", NSMAP):
-        nid = int(ne.get(qn("w:numId")))
-        if nid == outline_num_id:
-            anid_el = ne.find("w:abstractNumId", NSMAP)
-            if anid_el is not None:
-                outline_abstract_num_id = int(anid_el.get(qn("w:val")))
+    # --- step 1: 找到模板中套用 通用_層絆1 的段落，取得 numId ---
+    num_id = None
+    for p in doc.paragraphs:
+        if p.style.name == ANCHOR_STYLE:
+            p_pr = p._element.pPr
+            if p_pr is not None and p_pr.numPr is not None and p_pr.numPr.numId is not None:
+                num_id = int(p_pr.numPr.numId.val)
                 break
 
-    if outline_abstract_num_id is None:
-        print("[WARN] 找不到 outline abstractNumId，使用 fallback numId=1")
+    # fallback: 從樣式定義追查
+    if num_id is None:
+        for s in doc.styles:
+            if s.name == ANCHOR_STYLE:
+                sp_pr = s._element.find(".//w:pPr", NSMAP_LOCAL)
+                if sp_pr is not None:
+                    n_pr = sp_pr.find("w:numPr", NSMAP_LOCAL)
+                    if n_pr is not None:
+                        nid_el = n_pr.find("w:numId", NSMAP_LOCAL)
+                        if nid_el is not None:
+                            num_id = int(nid_el.get(qn("w:numId") or nid_el.attrib.get(
+                                "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val", "1")))
+                            break
+
+    if num_id is None:
+        print("[WARN] 無法從 pleading-tmpl.docx 找到 通用_層絆1 的 numId，使用 fallback numId=1")
         return 1
 
-    outline_abstract_xml = None
-    for ane in outline_npart.findall(".//w:abstractNum", NSMAP):
-        if int(ane.get(qn("w:abstractNumId"))) == outline_abstract_num_id:
-            outline_abstract_xml = ane
-            break
-
-    if outline_abstract_xml is None:
-        print("[WARN] 找不到 outline abstractNum XML，使用 fallback numId=1")
-        return 1
-
+    # --- step 2: 反查 abstractNumId ---
     doc_npart = doc.part.numbering_part.numbering_definitions._numbering
+    abstract_num_id = None
+    for ne in doc_npart.findall(".//w:num", NSMAP_LOCAL):
+        if int(ne.get(qn("w:numId"))) == num_id:
+            anid_el = ne.find("w:abstractNumId", NSMAP_LOCAL)
+            if anid_el is not None:
+                abstract_num_id = int(anid_el.get(
+                    "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val"))
+                break
 
-    max_abstract = 0
-    for ane in doc_npart.findall(".//w:abstractNum", NSMAP):
-        val = int(ane.get(qn("w:abstractNumId")))
-        if val > max_abstract:
-            max_abstract = val
-    new_abstract_id = max_abstract + 1
+    if abstract_num_id is None:
+        print("[WARN] 無法從 pleading-tmpl.docx 取得 abstractNumId，使用 fallback numId=1")
+        return 1
 
+    # --- step 3: 建立新的 w:num（startOverride=1）---
     max_num = 0
-    for ne in doc_npart.findall(".//w:num", NSMAP):
+    for ne in doc_npart.findall(".//w:num", NSMAP_LOCAL):
         val = int(ne.get(qn("w:numId")))
         if val > max_num:
             max_num = val
     new_num_id = max_num + 1
 
-    new_abstract = copy.deepcopy(outline_abstract_xml)
-    new_abstract.set(qn("w:abstractNumId"), str(new_abstract_id))
-
-    nsl = new_abstract.find("w:numStyleLink", NSMAP)
-    if nsl is not None:
-        new_abstract.remove(nsl)
-
-    first_num = doc_npart.find("w:num", NSMAP)
-    if first_num is not None:
-        doc_npart.insert(list(doc_npart).index(first_num), new_abstract)
-    else:
-        doc_npart.append(new_abstract)
-
     if _HAS_LXML:
         new_num = etree.SubElement(doc_npart, qn("w:num"))
         new_num.set(qn("w:numId"), str(new_num_id))
-
         abs_ref = etree.SubElement(new_num, qn("w:abstractNumId"))
-        abs_ref.set(qn("w:val"), str(new_abstract_id))
-
+        abs_ref.set(qn("w:val"), str(abstract_num_id))
         for ilvl_val in range(4):
             override = etree.SubElement(new_num, qn("w:lvlOverride"))
             override.set(qn("w:ilvl"), str(ilvl_val))
@@ -188,11 +154,9 @@ def _inject_chinese_numbering(doc: Document) -> int:
     else:
         new_num = OxmlElement("w:num")
         new_num.set(qn("w:numId"), str(new_num_id))
-
         abs_ref = OxmlElement("w:abstractNumId")
-        abs_ref.set(qn("w:val"), str(new_abstract_id))
+        abs_ref.set(qn("w:val"), str(abstract_num_id))
         new_num.append(abs_ref)
-
         for ilvl_val in range(4):
             override = OxmlElement("w:lvlOverride")
             override.set(qn("w:ilvl"), str(ilvl_val))
@@ -200,10 +164,9 @@ def _inject_chinese_numbering(doc: Document) -> int:
             so.set(qn("w:val"), "1")
             override.append(so)
             new_num.append(override)
-
         doc_npart.append(new_num)
 
-    print(f"[INFO] 注入中文 numbering: abstractNumId={new_abstract_id}, numId={new_num_id}")
+    print(f"[已完成] numbering 反查成功: numId={num_id} -> abstractNumId={abstract_num_id} -> 新 numId={new_num_id}")
     return new_num_id
 
 
@@ -508,17 +471,6 @@ def build_evidence_list_table(
 ) -> None:
     """
     依 evidence_list payload 產出高院證據清單表。
-
-    表格結構（來自模板 doc.tables[2]）：
-    - 列0+列1 為雙列合併標頭（含跨頁 tblHeader）
-    - 列2 為資料列藍圖（8 個 TC：序號/時間/名稱/簡要/待證/證據編號/卷宗頁碼/備註）
-    - 序號（TC0）由本函式依陣列索引自動生成，不從 payload 讀取
-
-    Args:
-        doc: 目標 Document
-        evidence_list: payload 中的 evidence_list dict
-        anchor_para: 錨點段落，表格插入其前
-        blueprint_tbl_xml: 從模板複製的 doc.tables[2]._tbl（含標題與藍圖列）
     """
     items = evidence_list.get("items", [])
     if not items:
@@ -549,6 +501,25 @@ def build_evidence_list_table(
         if trPr.find(qn("w:tblHeader")) is None:
             hdr = OxmlElement("w:tblHeader")
             trPr.append(hdr)
+        
+        # 強制標題列雙向置中
+        for tc in tr.findall(qn("w:tc")):
+            # 垂直置中
+            tcPr = tc.get_or_add_tcPr()
+            vAlign = tcPr.find(qn("w:vAlign"))
+            if vAlign is None:
+                vAlign = OxmlElement("w:vAlign")
+                tcPr.append(vAlign)
+            vAlign.set(qn("w:val"), "center")
+            
+            # 水平置中 (對段落設定)
+            for p_el in tc.findall(qn("w:p")):
+                pPr = p_el.get_or_add_pPr()
+                jc = pPr.find(qn("w:jc"))
+                if jc is None:
+                    jc = OxmlElement("w:jc")
+                    pPr.append(jc)
+                jc.set(qn("w:val"), "center")
 
     # 取得藍圖資料列（列2）
     if len(rows) < 3:
@@ -559,20 +530,35 @@ def build_evidence_list_table(
     # 移除藍圖資料列（稍後逐筆複製）
     new_tbl.remove(blueprint_data_row)
 
-    DATA_STYLE = "爭點表_內容"  # 資料列段落樣式
+    DATA_STYLE = "爭點表_內容"
+    
+    def _normalize_page_range(text: str) -> str:
+        import re
+        def _replace(match):
+            p1_s, p2_s = match.group(1), match.group(2)
+            try:
+                if int(p2_s) > int(p1_s):
+                    return f"{p1_s}~{p2_s}"
+            except: pass
+            return f"{p1_s}-{p2_s}"
+        return re.sub(r"(\d+)\s*-\s*(\d+)", _replace, text)
 
-    def _fill_cell(tc, text: str):
+    def _fill_cell(tc, text: str, align: str = "left"):
         """清空儲存格並填入文字與樣式。"""
         # 清空現有段落文字
         for p_el in tc.findall(qn("w:p")):
             for r_el in p_el.findall(qn("w:r")):
                 for t_el in r_el.findall(qn("w:t")):
                     t_el.text = ""
-        # 找第一個 w:p，設樣式並填入文字
+        # 垂直置中
+        tcPr = tc.get_or_add_tcPr()
+        vAlign = OxmlElement("w:vAlign")
+        vAlign.set(qn("w:val"), "center")
+        tcPr.append(vAlign)
+
         paras = tc.findall(qn("w:p"))
         if paras:
             p_el = paras[0]
-            # 設段落樣式
             pPr = p_el.find(qn("w:pPr"))
             if pPr is None:
                 pPr = OxmlElement("w:pPr")
@@ -582,6 +568,11 @@ def build_evidence_list_table(
                 pStyle = OxmlElement("w:pStyle")
                 pPr.insert(0, pStyle)
             pStyle.set(qn("w:val"), DATA_STYLE)
+
+            # 水平對齊
+            jc = OxmlElement("w:jc")
+            jc.set(qn("w:val"), "center" if align == "center" else "left")
+            pPr.append(jc)
             # 設文字
             runs = p_el.findall(".//" + qn("w:r"))
             if runs:
@@ -603,35 +594,53 @@ def build_evidence_list_table(
                 t_el.text = text
                 r_el.append(t_el)
                 p_el.append(r_el)
+        else:
+            np = OxmlElement("w:p")
+            pPr = OxmlElement("w:pPr")
+            pStyle = OxmlElement("w:pStyle")
+            pStyle.set(qn("w:val"), DATA_STYLE)
+            pPr.append(pStyle)
+            jc = OxmlElement("w:jc")
+            jc.set(qn("w:val"), "center" if align == "center" else "left")
+            pPr.append(jc)
+            np.append(pPr)
+            nr = OxmlElement("w:r")
+            nt = OxmlElement("w:t")
+            nt.text = text
+            nr.append(nt)
+            np.append(nr)
+            tc.append(np)
 
     for seq_idx, item in enumerate(sorted_items, start=1):
         new_row = copy.deepcopy(blueprint_data_row)
         tcs = new_row.findall(qn("w:tc"))
 
-        # TC0: 序號（自動生成，不從 payload 讀取）
+        # TC0: 序號 (雙向置中)
         if len(tcs) > 0:
-            _fill_cell(tcs[0], str(seq_idx))
-        # TC1: 證據時間
+            _fill_cell(tcs[0], str(seq_idx), align="center")
+        # TC1: 證據時間 (雙向置中)
         if len(tcs) > 1:
-            _fill_cell(tcs[1], item.get("evidence_date", ""))
-        # TC2: 證據名稱
+            _fill_cell(tcs[1], item.get("evidence_date", ""), align="center")
+        # TC2: 證據名稱 (垂直置中 + 靠左)
         if len(tcs) > 2:
-            _fill_cell(tcs[2], item.get("evidence_name", ""))
-        # TC3: 證據簡要內容
+            _fill_cell(tcs[2], item.get("evidence_name", ""), align="left")
+        # TC3: 證據簡要內容 (垂直置中 + 靠左)
         if len(tcs) > 3:
-            _fill_cell(tcs[3], item.get("evidence_summary", ""))
-        # TC4: 待證事實
+            _fill_cell(tcs[3], item.get("evidence_summary", ""), align="left")
+        # TC4: 待證事實 (垂直置中 + 靠左)
         if len(tcs) > 4:
-            _fill_cell(tcs[4], item.get("fact_to_prove", ""))
-        # TC5: 證據編號
+            _fill_cell(tcs[4], item.get("fact_to_prove", ""), align="left")
+        # TC5: 證據編號 (雙向置中)
         if len(tcs) > 5:
-            _fill_cell(tcs[5], item.get("evidence_code", ""))
-        # TC6: 法院卷宗頁碼
+            _fill_cell(tcs[5], item.get("evidence_code", ""), align="center")
+        # TC6: 法院卷宗頁碼 (垂直置中 + 靠左 + 範圍偵測)
         if len(tcs) > 6:
-            _fill_cell(tcs[6], item.get("court_page", ""))
-        # TC7: 備註意見（預設留白）
+            raw_page = str(item.get("court_page", "")).strip()
+            normalized_page = _normalize_page_range(raw_page)
+            _fill_cell(tcs[6], normalized_page, align="left")
+        # TC7: 備註意見 (垂直置中 + 靠左)
         if len(tcs) > 7:
-            _fill_cell(tcs[7], item.get("remarks", ""))
+            _fill_cell(tcs[7], item.get("remarks", ""), align="left")
 
         new_tbl.append(new_row)
 
@@ -817,7 +826,7 @@ def build_issue_table(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="以 payload JSON + table-tmpl.docx 生成爭點整理狀 DOCX。"
+        description="以 payload JSON + pleading-tmpl.docx 生成爭點整理狀 DOCX。"
     )
     parser.add_argument("payload", help="payload JSON 路徑")
     parser.add_argument("--template", "-t", default=None)
@@ -833,7 +842,8 @@ def main():
     if args.template:
         template_path = Path(args.template)
     else:
-        template_path = script_dir.parent / "assets" / "table-tmpl.docx"
+        # 預設使用 draft-pleading 的共用模板（已合併爭點表藍圖與樣式）
+        template_path = script_dir.parent.parent / "draft-pleading" / "assets" / "pleading-tmpl.docx"
 
     if not template_path.exists():
         print(f"[錯誤] 找不到模板：{template_path}", file=sys.stderr)

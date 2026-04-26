@@ -87,7 +87,6 @@ def _get_safe_style(doc, style_name):
     mangled_map = {
         '書狀_預設': ['書狀預設', 'a6', 'Style1', 'Ѫ_w]'],
         '書狀_標題': ['a10', 'Style12', 'Ѫ_D'],
-        '書狀_狀首日期': ['a2', 'Style13', 'Ѫ_'],
         '書狀_狀首當事人': ['a27', 'Style33', 'Ѫ_ƤH'],
         '書狀_簽章': ['a13', 'Style24', 'Ѫ_ñ'],
         '書狀_謹狀': ['a15', 'Style25', 'Ѫ_Ԫ'],
@@ -496,7 +495,7 @@ def merge_and_write_header(doc, header_data=None, md_headers=None,
                 roc_year = target_date.year - 1911
                 new_date_str = f"{roc_year}年{target_date.month}月{target_date.day}日"
                 
-                p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_狀首日期'))
+                p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_預設'))
                 normalize_header_paragraph(p)
                 p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
                 run = p.add_run(new_date_str)
@@ -558,7 +557,7 @@ def merge_and_write_header(doc, header_data=None, md_headers=None,
                     else:
                         new_date_str = f"{roc_year}年{target_date.month}月{target_date.day}日"
                         
-                    p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_狀首日期'))
+                    p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_預設'))
                     normalize_header_paragraph(p)
                     p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
                     run = p.add_run(new_date_str)
@@ -592,7 +591,7 @@ def merge_and_write_header(doc, header_data=None, md_headers=None,
             p.add_run(title)
 
             if _wants_top_date():
-                p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_狀首日期'))
+                p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_預設'))
                 normalize_header_paragraph(p)
                 p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
                 run = p.add_run(md_headers.get('date') or f"{datetime.date.today().year - 1911}年　月　日")
@@ -623,7 +622,7 @@ def merge_and_write_header(doc, header_data=None, md_headers=None,
             p.add_run(title)
 
             if _wants_top_date():
-                p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_狀首日期'))
+                p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_預設'))
                 normalize_header_paragraph(p)
                 p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
                 run = p.add_run(f"{datetime.date.today().year - 1911}年　月　日")

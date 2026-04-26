@@ -33,22 +33,8 @@ def find_and_remove_anchor(doc):
     # 從段落 XML 取得 numId
     pPr = anchor_para._element.pPr
     if pPr is None or pPr.numPr is None or pPr.numPr.numId is None:
-        # 嘗試從樣式繼承取得
-        style_elem = anchor_para.style._element
-        s_pPr = style_elem.find('.//w:pPr', NSMAP)
-        if s_pPr is not None:
-            s_numPr = s_pPr.find('w:numPr', NSMAP)
-            if s_numPr is not None:
-                s_numId = s_numPr.find('w:numId', NSMAP)
-                if s_numId is not None:
-                    num_id = int(s_numId.get(qn('w:val')))
-                else:
-                    raise RuntimeError("錨點段落的樣式也沒有 numId 設定")
-            else:
-                # 嘗試從 basedOn 鏈反查
-                num_id = _trace_num_id_from_style(doc, anchor_para.style)
-        else:
-            raise RuntimeError("錨點段落無 numPr 且樣式無 pPr")
+        # 嘗試從 basedOn 鏈反查
+        num_id = _trace_num_id_from_style(doc, anchor_para.style)
     else:
         num_id = pPr.numPr.numId.val
 
@@ -65,29 +51,20 @@ def find_and_remove_anchor(doc):
 
 def _trace_num_id_from_style(doc, style):
     """沿 basedOn 鏈追蹤 numId。"""
-    visited = set()
-    current = style
-    while current and current.name not in visited:
-        visited.add(current.name)
-        elem = current._element
-        pPr = elem.find('.//w:pPr', NSMAP)
+    curr = style
+    while curr:
+        pPr = curr._element.find('.//w:pPr', NSMAP)
         if pPr is not None:
             numPr = pPr.find('w:numPr', NSMAP)
             if numPr is not None:
-                numId_el = numPr.find('w:numId', NSMAP)
-                if numId_el is not None:
-                    return int(numId_el.get(qn('w:val')))
-        # 沿 basedOn 繼續
-        basedOn = elem.find('w:basedOn', NSMAP)
-        if basedOn is not None:
-            based_id = basedOn.get(qn('w:val'))
-            try:
-                current = doc.styles.get_by_id(based_id)
-            except KeyError:
-                break
+                nid = numPr.find('w:numId', NSMAP)
+                if nid is not None:
+                    return int(nid.get(qn('w:val')))
+        if curr.base_style:
+            curr = curr.base_style
         else:
             break
-    raise RuntimeError("無法從樣式繼承鏈中找到 numId")
+    raise RuntimeError("無法從樣式鏈取得編號 ID")
 
 
 def _get_abstract_num_id(doc, num_id):
