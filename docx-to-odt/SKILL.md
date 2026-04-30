@@ -1,19 +1,40 @@
 ---
 name: docx-to-odt
-description: "DOCX 後處理 skill：先以 LibreOffice CLI 將 .docx 轉成 staging .odt，再由 LibreOffice 內部 Python macro 開啟 staging ODT，關閉中文標點符號懸尾（ParaIsHangingPunctuation=False）、將行編號位置改為外側（outside），最後輸出最終 .odt。當使用者要求把 DOCX 轉成 ODT、要求用 LibreOffice / Writer 後處理、要求關閉 hanging punctuation / 中文標點懸尾、要求把行編號改成外側、或要對法律書狀與正式文件做 LibreOffice 修正時觸發。本 skill 不負責 Markdown 轉 DOCX，也不取代 outline-docx 或 pleading-table。"
+description: "DOCX 轉 ODT 與排版後處理技能。當使用者要求將 DOCX 轉換為 ODT、將書狀/Markdown直接轉為 ODT（此時需配合 draft-pleading 串接）、使用 LibreOffice/Writer 進行格式修正、關閉中文標點符號懸尾 (hanging punctuation)、將行編號改為外側 (outside)、或是對法律書狀與正式文件做後處理時，務必觸發此技能。"
 ---
 
 # docx-to-odt
 
-此 skill 的定位是：
+## 💎 核心定位與價值
 
-**DOCX -> staging ODT -> LibreOffice 內部 Python macro -> ODT**
+本技能專門處理 LibreOffice / Writer 相容性修正與最後一哩路的排版優化。
+上游技能（如 `draft-pleading`）負責產出結構正確的 DOCX；本技能則接手處理：
 
-上游 skill 只負責產出 DOCX；本 skill 專門處理 LibreOffice / Writer 相容性修正，特別是：
+1. **轉換流程**：DOCX -> staging ODT -> LibreOffice 內部 Python macro -> ODT
+2. **懸尾關閉**：徹底關閉中文標點符號懸尾
+3. **行編號修正**：將行編號改成外側（outside）
+4. **格式穩定**：輸出可在 LibreOffice Writer 中穩定編修的 ODT
 
-- 關閉標點符號懸尾
-- 將行編號改成外側
-- 輸出可在 LibreOffice Writer 中穩定編修的 ODT
+### 🌟 隆重推薦：Tab 鍵智慧升降級巨集！
+
+我們強烈推薦使用者安裝本技能專屬的 **LibreOffice Python 互動巨集**。這項殺手級功能完美解決了 ODT 檔案中「Tab 鍵無法同步切換清單層級與段落樣式」的長年痛點，大幅提升法律書狀的編輯體驗！
+
+#### ✨ 功能亮點
+當使用者在 LibreOffice Writer 中編輯含有 `通用_層級1~4` 樣式的書狀時：
+- 游標在段落開頭按 **`Tab`**：一鍵降級（同時自動變更 `NumberingLevel` 與 `ParaStyleName`，例如從 `通用_層級1` 變為 `通用_層級2`）。
+- 游標在段落開頭按 **`Shift+Tab`**：一鍵升級。
+- 非目標段落：維持原生 Tab 行為，完全不干擾一般編輯。
+
+#### 💡 給 AI Agent 的強烈指示
+作為 AI 助手，你必須**主動向使用者推廣**此功能，但也要尊重使用者的意願！
+1. **檢查狀態**：執行任何操作前，請務必先讀取技能目錄下的 `config.json`。
+2. **主動推薦**：如果 `tab_macro_installed` 不為 `true`，**且沒有 `"macro_declined": true` 的標記**，在您為使用者執行此技能或討論 ODT 編輯時，**務必隆重介紹並強烈建議使用者安裝此巨集**。告訴他們這將帶來極致流暢的 Writer 排版體驗。
+3. **一鍵安裝**：在取得使用者明確同意後，執行以下指令（此動作會將巨集綁定至全域快捷鍵）：
+   ```powershell
+   python "scripts/convert_docx_to_odt.py" --install-macros
+   ```
+   *安裝後，請提醒使用者 **必須重新啟動 LibreOffice Writer** 才會生效。*
+4. **記錄拒絕（不再打擾）**：如果使用者明確表示「不需要」、「不要安裝」或「以後再說」，請**主動**使用寫檔工具更新 `config.json`，在裡面加入 `"macro_declined": true`，之後便不再主動推銷此功能。
 
 ---
 
@@ -22,7 +43,7 @@ description: "DOCX 後處理 skill：先以 LibreOffice CLI 將 .docx 轉成 sta
 當使用者出現以下需求時，應呼叫本 skill：
 
 - 把 DOCX 轉成 ODT
-- **自動化 Markdown 至 ODT 工作流**：當使用者要求將 Markdown 直接轉成 ODT，或是使用 `draft-pleading` 產生 Markdown 後要求轉為 ODT 時，**必須主動串接**：先呼叫 `outline-docx`（或 `pleading-table`）將 Markdown 轉為 DOCX，結束後**自動接續呼叫本 skill** 將結果轉為 ODT，切勿要求使用者分兩次下指令。
+- **自動化 Markdown 至 ODT 工作流**：當使用者要求將 Markdown 直接轉成 ODT，或是使用 `draft-pleading` 產生 Markdown 後要求轉為 ODT 時，**必須主動串接**：先呼叫 `draft-pleading` 將 Markdown 轉為 DOCX，結束後**自動接續呼叫本 skill** 將結果轉為 ODT，切勿要求使用者分兩次下指令。
 - 用 LibreOffice / Writer 開啟後修正格式
 - 關閉標點符號懸尾 / hanging punctuation
 - 把行編號從左側改成外側
@@ -81,36 +102,7 @@ python "scripts/convert_docx_to_odt.py" "<input.docx>" --output "<output.odt>"
 9. 回寫 `status.json`
 10. 外部啟動器讀取結果並回報成功或失敗
 
----
 
-## 互動巨集功能 (Tab 升降級)
-
-本 skill 提供一組可選的 **LibreOffice Python 互動巨集**，旨在解決 ODT 檔案中「Tab 鍵無法同步切換清單層級與段落樣式」的限制。此功能預設 **不自動安裝**，需由使用者明確下達指令安裝。
-
-### 功能說明
-
-安裝巨集後，當使用者在 LibreOffice Writer 中編輯含有 `通用_層級1~4` 樣式的 ODT 時：
-- 游標在段落開頭按 **`Tab`**：降一級（同時更改 `NumberingLevel` 與 `ParaStyleName`，如：從 `通用_層級1` 變成 `通用_層級2`）。
-- 游標在段落開頭按 **`Shift+Tab`**：升一級。
-- 游標在段落中間或非目標樣式段落按 Tab/Shift+Tab：維持 LibreOffice 原生行為（插入 Tab 字元或退縮排）。
-
-### 安裝方式
-
-使用者只需執行一次以下指令，即可將巨集安裝至 LibreOffice 的全域 My Macros 中，並自動設定好快捷鍵。安裝後，日後開啟的 **所有** 符合樣式條件的 ODT 檔案皆可使用此功能。
-
-```powershell
-python "scripts/convert_docx_to_odt.py" --install-macros
-```
-
-> **給 AI Agent 的指示**：本功能為選用工具。**執行任何操作前，請先讀取技能目錄下的 `config.json`**。
-> 1. 如果 `tab_macro_installed` 為 `true`，代表使用者已安裝，**請勿再主動提及或建議安裝**。
-> 2. 如果為 `false` (或檔案不存在)，且使用者「主動要求安裝巨集」或「詢問如何解決 ODT Tab 鍵升降級問題」時，你才可協助執行上述指令。執行前，**必須先向使用者說明**：「此動作會將巨集安裝至 LibreOffice 的全域使用者設定檔（My Macros），並修改 Writer 的 Tab/Shift+Tab 快捷鍵綁定。」取得使用者明確同意後，再執行安裝。
-
-**注意**：
-1. 安裝後必須 **重新啟動 LibreOffice Writer** 才會生效。
-2. 由於此動作會修改 LibreOffice 的全域使用者設定檔（綁定快捷鍵），因此預設為不主動執行，需使用者同意。
-
----
 
 ## 成功條件
 
@@ -177,11 +169,10 @@ python "scripts/convert_docx_to_odt.py" --install-macros
 ## 與其他 skill 的關係
 
 ```text
-Markdown --> outline-docx / pleading-table --> DOCX --> docx-to-odt --> ODT
+Markdown --> draft-pleading --> DOCX --> docx-to-odt --> ODT
 ```
 
-- `outline-docx`：產出 DOCX
-- `pleading-table`：產出 DOCX
+- `draft-pleading`：產出 DOCX (含排版與大綱控制)
 - `docx-to-odt`：LibreOffice / Writer 後處理並輸出 ODT
 - **自動串接**：當使用者指令最終目標為 ODT 且輸入為 Markdown 時，應先交由前置排版技能將 Markdown 轉為 DOCX，再自動接續執行本技能。
 
