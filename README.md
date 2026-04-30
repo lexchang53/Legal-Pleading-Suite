@@ -127,16 +127,21 @@ Legal-Pleading-Suite/
 建議您至少具備以下環境：
 
 - Python 3.10+（或依各模組實際需求版本）
-- Git
+- Git（選配，若不熟悉指令可直接下載 ZIP 檔）
 - LibreOffice（若您需要 ODT 轉檔與後續編修）
 - 可登入 Google 帳號的瀏覽器環境（若您要使用 NotebookLM）
 
 ### 1. 下載專案
 
+對於熟悉程式開發的使用者，建議使用 `git` 以便日後同步更新：
+
 ```bash
-git clone https://github.com/YOUR_NAME/Legal-Pleading-Suite.git
+git clone https://github.com/lexchang53/Legal-Pleading-Suite.git
 cd Legal-Pleading-Suite
 ```
+
+**【法律專業人士建議方式】**：
+若您不熟悉 `git` 指令，可以直接在 GitHub 頁面點擊綠色的 **「Code」** 按鈕，選擇 **「Download ZIP」**。下載後解壓縮，即可直接使用其中的檔案，完全不需要安裝 Git。
 
 ### 2. 檢查授權與模組
 
@@ -176,6 +181,13 @@ python scripts/run.py notebook_manager.py add \
   --description "本筆記本包含勞資爭議案件之雙方書狀、證據、筆錄與裁判" \
   --topics "勞動法,資遣費,確認僱傭關係"
 ```
+
+### 5. 進一步深入瞭解
+
+本專案將複雜的排版邏輯與法律撰稿規則抽離至獨立文件。若您想更深入瞭解內部的運作準則，請參考以下目錄內的 `.md` 檔案：
+
+- **`draft-pleading/references/`**：包含草稿撰寫規則 (`phase5-draft-rules.md`)、知識庫查詢流程、撰寫計畫要求等。
+- **`pleading-table/references/`**：包含爭點整理表的詳細排版與自動編號細則。
 
 ---
 
@@ -237,6 +249,29 @@ python scripts/run.py notebook_manager.py add \
 ```text
 請畫出本案的當事人關係圖與證據鏈分析圖。
 ```
+
+---
+
+## 書狀排版規格與範本
+
+本套件的最終排版輸出高度依賴預設的 Word 範本檔。
+
+### 1. 範本檔案位置
+- **`draft-pleading/assets/pleading-tmpl.docx`**
+
+### 2. 核心排版規格
+- **字型與樣式**：全文預設使用 **標楷體 (BiauKai)**，標題與內文均預設符合台灣法院實務規格。
+- **行距與段落**：採用標準行距（約 1.5 倍）與懸掛縮排，確保自動編號後的法條與論點對齊美觀。
+- **行編號 (Line Numbering)**：
+  - **DOCX 輸出**：行編號固定顯示於頁面 **左側**。
+  - **ODT 轉換後**：若經由 `docx-to-odt` 處理，行編號會自動調整為頁面 **外側 (Outside)**，符合雙面列印或特定格式需求。
+- **表格規格 (高院格式)**：
+  - 爭點整理表與證據清單表參考 **臺灣高等法院** 的標準格式（並根據 AI 解析需求稍作優化）。
+  - 支援 **跨頁重複標題列**，確保長表格在翻頁後仍能清楚辨識欄位。
+  - 表格內文字字型大小與框線粗細均已預先調校。
+
+> [!TIP]
+> 使用者可以依照事務所的偏好，直接開啟 `pleading-tmpl.docx` 調整字型、行高或邊界設定。只要不刪除內部的樣式名稱，排版引擎就能自動套用您的自訂格式。
 
 ---
 
