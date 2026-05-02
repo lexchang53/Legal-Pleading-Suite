@@ -1,4 +1,4 @@
-# ⚖️ AI 法律訴訟書狀自動化套件  
+# ⚖️ AI 民事訴訟書狀自動化套件  
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/license-CC--BY--NC--SA--4.0-lightgrey.svg)](LICENSE.md)
 ![Monorepo](https://img.shields.io/badge/structure-monorepo-blue)
 ![Taiwan Legal Workflow](https://img.shields.io/badge/focus-Taiwan%20Legal%20Workflow-2f855a)
