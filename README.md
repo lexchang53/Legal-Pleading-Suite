@@ -1,4 +1,4 @@
-# ⚖️ AI 民事訴訟書狀自動化套件  
+# ⚖️ AI 法律訴訟書狀自動化套件  
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/license-CC--BY--NC--SA--4.0-lightgrey.svg)](LICENSE.md)
 ![Monorepo](https://img.shields.io/badge/structure-monorepo-blue)
 ![Taiwan Legal Workflow](https://img.shields.io/badge/focus-Taiwan%20Legal%20Workflow-2f855a)
@@ -88,6 +88,10 @@ Legal-Pleading-Suite/
 
 ### 1. `draft-pleading/`
 核心撰狀引擎。負責讀取案件資料、分析爭點、形成撰寫計畫、視需要查詢知識庫、生成 Markdown 草稿，並在草稿確認後交由內部排版流程輸出最終 DOCX。
+
+在處理台灣勞動法相關案件時，`draft-pleading` 預設搭配下列 NotebookLM 筆記本作為優先查詢來源之一：
+
+- [台灣勞動法知識庫｜張清浩律師編選](https://notebooklm.google.com/notebook/cba7ccc1-4bbd-4329-8bde-6a6e7a71a857)
 
 支援的典型書狀包括：
 
@@ -209,14 +213,20 @@ python scripts/run.py auth_manager.py setup
 python scripts/run.py notebook_manager.py list
 ```
 
+若您希望直接搭配本專案預設的勞動法知識庫使用，可優先加入下列 NotebookLM 筆記本：
+
+- [台灣勞動法知識庫｜張清浩律師編選](https://notebooklm.google.com/notebook/cba7ccc1-4bbd-4329-8bde-6a6e7a71a857)
+
+此筆記本可作為處理台灣勞動法相關案件時的預設知識來源之一，特別適合用於補強勞資爭議案件中的法條、實務見解與爭點整理。
+
 若您尚未把 notebook 加入 library，可再依需要新增：
 
 ```bash
 python scripts/run.py notebook_manager.py add \
   --url "https://notebooklm.google.com/notebook/..." \
   --name "我的案件筆記本" \
-  --description "本筆記本包含勞資爭議案件之雙方書狀、證據、筆錄與裁判" \
-  --topics "勞動法,資遣費,確認僱傭關係"
+  --description "王〇明訴壞〇公司案件之兩造書狀、證據、法院筆錄、文書與裁判" \
+  --topics "王〇明, 壞〇公司, 給付資遣費"
 ```
 
 ### 5. 進一步深入瞭解
@@ -258,6 +268,24 @@ python scripts/run.py notebook_manager.py add \
 這種做法適合先確認書狀架構、請求內容、事實經過與論證方向，而把真實個資留到最後階段再手動補齊，以降低敏感資料在前期處理流程中的暴露範圍。
 
 若您願意提供較完整的案件基本資料，AI 通常能更順利地建立當事人欄位、法院名稱、案由、狀尾資訊與其他書狀基礎欄位；但是否提供，仍可依您的隱私考量與工作習慣自行決定。
+
+例如，您可以建立如下內容：
+
+```text
+原告：王〇明
+地址：新北市板橋區○○路100號
+電話：02-1234-5678
+電子郵件：plaintiff@example.com
+
+被告：壞〇股份有限公司
+地址：臺北市大安區○○路200號
+
+法院：臺灣新北地方法院
+案由：給付資遣費
+案號：可留白；如已有案號可填入
+```
+
+案件基本資料越完整，越有助於 AI 讀取後建立案號、股別、當事人資訊、案由、狀尾法院資訊等事項；但最終內容仍應由使用者自行核對。
 
 若您平常會先與當事人討論案情，再將錄音轉成逐字稿，也可以直接把逐字稿放入工作區，讓系統據以整理事實經過與初步主張。
 
