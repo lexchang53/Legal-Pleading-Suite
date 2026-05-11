@@ -913,6 +913,16 @@ def _fix_list_style_bindings(doc):
                 try:
                     s = para_styles.getByName(variant)
                     s.NumberingStyleName = target_ls
+                    # --- 修正文字流控制：允許跨頁且不強制與下段併排 ---
+                    try:
+                        s.ParaKeepTogether = False
+                    except Exception:
+                        pass
+                    try:
+                        s.ParaSplit = True
+                    except Exception:
+                        pass
+                    # ---------------------------------------------
                     dn = s.DisplayName if hasattr(s, 'DisplayName') else variant
                     display_to_level[dn] = level
                     internal_to_level[variant] = level
@@ -957,6 +967,14 @@ def _fix_list_style_bindings(doc):
                         elif level > 0:
                             # 內部層級，取消重設旗標
                             restart_next = False
+                        
+                        # --- 個別段落也強制修正分頁屬性 ---
+                        try:
+                            elem.ParaKeepTogether = False
+                            elem.ParaSplit = True
+                        except Exception:
+                            pass
+                        
                         paras_fixed += 1
                     else:
                         pass

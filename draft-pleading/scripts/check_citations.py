@@ -189,7 +189,7 @@ def check_draft(md_path: str) -> tuple[list[dict], list[dict]]:
 
         # ── 規則 4: RULING_NO_QUOTE ────────────────────────────────────────
         # 裁判字號後缺乏引號原文
-        if _RULING_CITE.search(line):
+        if _RULING_CITE.search(line) and not re.match(r'^案號[：:]', stripped):
             if not _QUOTED_TEXT.search(ctx):
                 add_violation(
                     'RULING_NO_QUOTE', i,

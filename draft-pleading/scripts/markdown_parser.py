@@ -251,6 +251,9 @@ def parse_markdown(md_path, content=None):
         line = lines[i].rstrip('\n').rstrip('\r')
         i += 1
 
+        if '📎 引用來源記錄' in line:
+            break
+
         if not line.strip():
             if in_table:
                 blocks.append(TableBlock(table_headers, table_rows))

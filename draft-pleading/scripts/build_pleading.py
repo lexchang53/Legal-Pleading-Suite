@@ -255,8 +255,10 @@ def main():
         output_path = os.path.abspath(args.output)
     else:
         base = os.path.splitext(os.path.basename(draft_path))[0]
+        if base.endswith('_草稿'):
+            base = base[:-3]
         output_dir = os.path.dirname(draft_path)
-        output_path = os.path.join(output_dir, f"{base}_排版完成.docx")
+        output_path = os.path.join(output_dir, f"{base}.docx")
 
     print(f"[START] 開始排版 (v2 iteration-3)")
     print(f"  模板: {template_path}")

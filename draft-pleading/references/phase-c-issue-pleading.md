@@ -467,14 +467,6 @@
 3. 執行 `build_issue_table.py`
 4. 以 `python-docx` + `table-tmpl.docx` 產出最終 DOCX
 
-> [!CAUTION]
-> 不得再使用以下舊流程：
-> - `generate_pleading.py`
-> - `merge_table.py`
-> - `clear_body.py`
-> - `md_to_xml.py`
-> - `unpack.py` / `pack.py`
-
 ## 六、檔名與存放位置
 
 > **通用規則（依循 SKILL.md 全域規則）**：先列出工作目錄中現有書狀檔案（`.md` 為主），分析命名規則，依同一規則命名本次草稿。若工作目錄無既有書狀可供參照，退回預設格式：`爭點整理狀_草稿.md`。
