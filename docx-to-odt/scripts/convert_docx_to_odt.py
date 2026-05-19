@@ -714,7 +714,7 @@ def setup_keyboard_bindings(*args):
         pass
 
 
-def export_custom_pdf():
+def export_custom_pdf(*args):
     """匯出當前 ODT 為 PDF，並在背景調用系統 Python 智慧過濾書籤（聲明隱形，理由保留，無聲明正常顯示）。"""
     import subprocess
     from pathlib import Path
