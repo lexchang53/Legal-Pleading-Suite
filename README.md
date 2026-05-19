@@ -111,6 +111,9 @@ Legal-Pleading-Suite/
 
 ### 3. `docx-to-odt/`
 在有明確需求時，將 DOCX 轉換為 ODT，供 LibreOffice 工作流繼續編修。
+- **免巨集原生 Tab 鍵升降級**：100% 原生支援 LibreOffice 的 Tab / Shift-Tab 鍵對「通用_層級 1~4」段落進行大綱樣式與編號的升降級，無需背景監聽巨集。
+- **XML 堆疊安全重整**：使用先進的非 DOTALL 堆疊標記掃描器，徹底解決 DOCX 轉 ODT 後結構損壞導致 LibreOffice 閃退之痛點。
+- **舊 ODT 檔一鍵批次修復工具 (`fix_odt_tab.py`)**：新增極速批次修復工具，支援對單一舊 ODT 檔案或整個資料夾遞迴進行結構重整，完美重現「一、(一) 1. (1)」大綱排版並解放 Tab 鍵功能。
 
 ### 4. `notebooklm-skill/`
 整合 Google NotebookLM 查詢能力。此目錄名稱為 `notebooklm-skill`，其內部技能名稱為 `notebooklm`。可用於管理 notebook library、驗證登入狀態、指定 notebook 或 URL 查詢，以及延伸追問補查。
@@ -421,6 +424,19 @@ python scripts/run.py notebook_manager.py add \
 ```text
 請幫我將書狀草稿轉成 ODT 檔。
 ```
+
+### 一鍵批次修復舊 ODT 檔案
+
+若您有舊的 ODT 書狀無法使用 Tab 鍵進行升降級，可直接使用本套件隨附的極速修復工具：
+
+* **修復單一舊 ODT 檔案**：
+  ```bash
+  python docx-to-odt/scripts/fix_odt_tab.py "路徑/你的舊書狀.odt"
+  ```
+* **批次遞迴修復整個資料夾（含所有子目錄）下的所有舊 ODT 檔案**：
+  ```bash
+  python docx-to-odt/scripts/fix_odt_tab.py "C:\Users\lex\Dropbox\我的案件書狀"
+  ```
 
 ### 生成法律可視化圖
 
