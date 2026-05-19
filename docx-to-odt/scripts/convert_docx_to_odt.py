@@ -746,7 +746,6 @@ def export_custom_pdf(*args):
         pdf_url = uno.systemPathToFileUrl(str(pdf_path.resolve()))
         
         # 2. 原生調用 UNO 匯出 PDF
-        import com.sun.star.beans
         prop = uno.createUnoStruct("com.sun.star.beans.PropertyValue")
         prop.Name = "FilterName"
         prop.Value = "writer_pdf_Export"
