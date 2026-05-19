@@ -1193,56 +1193,273 @@ def _enforce_line_numbering_outside_xml(odt_path: Path):
 
 def _unify_list_style_xml(odt_path: Path):
     """
-    XML 後處理：移除 content.xml 中自動段落樣式的 style:list-style-name 覆寫。
-    只處理 parent 為 通用_層級1~4 的自動樣式，讓段落回歸繼承段落樣式的清單綁定。
-    使用正則表達式避免依賴 lxml（LibreOffice 內建 Python 不保證有）。
+    XML 後處理（content.xml + styles.xml）：
+    1. 移除從 DOCX 匯入的書籤（消除灰色括號 [ ] ）
+    2. 移除 content.xml 中自動段落樣式的 style:list-style-name 覆寫
+    3. 【關鍵】將「一般清單路線」轉換為「章節編號路線」：
+       - 在 styles.xml 中，將通用_層級樣式的 style:list-style-name/list-level
+         改為 style:default-outline-level，使 LibreOffice 的原生 Tab 升降級可以運作
+       - 修正 <text:outline-style>（Outline）的編號格式，確保它有正確的法律書狀編號
+       - 在 content.xml 中，將使用通用_層級樣式的 <text:p> 改為 <text:h>，
+         並加上對應的 text:outline-level 屬性
     """
-    target_parents = (
-        '\u901a\u7528_5f_\u5c64\u7d1a1', '\u901a\u7528_5f_\u5c64\u7d1a2',
-        '\u901a\u7528_5f_\u5c64\u7d1a3', '\u901a\u7528_5f_\u5c64\u7d1a4',
-        '\u901a\u7528_\u5c64\u7d1a1', '\u901a\u7528_\u5c64\u7d1a2',
-        '\u901a\u7528_\u5c64\u7d1a3', '\u901a\u7528_\u5c64\u7d1a4',
-    )
+    # 層級名稱對應 outline level（1-based for ODT）
+    LEVEL_STYLE_MAP = {
+        '通用_5f_層級1': 1, '通用_5f_層級2': 2,
+        '通用_5f_層級3': 3, '通用_5f_層級4': 4,
+        '通用_層級1': 1, '通用_層級2': 2,
+        '通用_層級3': 3, '通用_層級4': 4,
+    }
+    # 繼承自通用_層級的自動段落樣式也需要轉換，先 pass（由段落遍歷處理）
 
-    tmp_path = odt_path.with_suffix('.listfix.tmp')
-    _delete_if_exists(tmp_path)
-    odt_path.replace(tmp_path)
+    # 正確的法律書狀章節編號格式（對應 WWNum1 的格式）
+    OUTLINE_STYLE_XML = (
+        '<text:outline-style style:name="Outline">'
+        '<text:outline-level-style text:level="1" '
+        'loext:num-list-format="%1%、" style:num-suffix="、" style:num-format="一, 二, 三, ...">'
+        '<style:list-level-properties text:list-level-position-and-space-mode="label-alignment">'
+        '<style:list-level-label-alignment text:label-followed-by="listtab" '
+        'text:list-tab-stop-position="1cm" fo:text-indent="-1cm" fo:margin-left="1cm"/>'
+        '</style:list-level-properties>'
+        '</text:outline-level-style>'
+        '<text:outline-level-style text:level="2" '
+        'loext:num-list-format="(%2%)" style:num-prefix="(" style:num-suffix=")" style:num-format="一, 二, 三, ...">'
+        '<style:list-level-properties text:list-level-position-and-space-mode="label-alignment">'
+        '<style:list-level-label-alignment text:label-followed-by="listtab" '
+        'text:list-tab-stop-position="1.499cm" fo:text-indent="-1cm" fo:margin-left="1.499cm"/>'
+        '</style:list-level-properties>'
+        '</text:outline-level-style>'
+        '<text:outline-level-style text:level="3" '
+        'loext:num-list-format="%3%." style:num-suffix="." style:num-format="1">'
+        '<style:list-level-properties text:list-level-position-and-space-mode="label-alignment">'
+        '<style:list-level-label-alignment text:label-followed-by="listtab" '
+        'text:list-tab-stop-position="1.499cm" fo:text-indent="-0.499cm" fo:margin-left="1.499cm"/>'
+        '</style:list-level-properties>'
+        '</text:outline-level-style>'
+        '<text:outline-level-style text:level="4" '
+        'loext:num-list-format="(%4%)" style:num-prefix="(" style:num-suffix=")" style:num-format="1">'
+        '<style:list-level-properties text:list-level-position-and-space-mode="label-alignment">'
+        '<style:list-level-label-alignment text:label-followed-by="listtab" '
+        'text:list-tab-stop-position="1.998cm" fo:text-indent="-0.499cm" fo:margin-left="1.998cm"/>'
+        '</style:list-level-properties>'
+        '</text:outline-level-style>'
+        '<text:outline-level-style text:level="5" loext:num-list-format="%5%" style:num-format="">'
+        '<style:list-level-properties text:list-level-position-and-space-mode="label-alignment">'
+        '<style:list-level-label-alignment text:label-followed-by="nothing"/>'
+        '</style:list-level-properties>'
+        '</text:outline-level-style>'
+        '<text:outline-level-style text:level="6" loext:num-list-format="%6%" style:num-format="">'
+        '<style:list-level-properties text:list-level-position-and-space-mode="label-alignment">'
+        '<style:list-level-label-alignment text:label-followed-by="nothing"/>'
+        '</style:list-level-properties>'
+        '</text:outline-level-style>'
+        '<text:outline-level-style text:level="7" loext:num-list-format="%7%" style:num-format="">'
+        '<style:list-level-properties text:list-level-position-and-space-mode="label-alignment">'
+        '<style:list-level-label-alignment text:label-followed-by="nothing"/>'
+        '</style:list-level-properties>'
+        '</text:outline-level-style>'
+        '<text:outline-level-style text:level="8" loext:num-list-format="%8%" style:num-format="">'
+        '<style:list-level-properties text:list-level-position-and-space-mode="label-alignment">'
+        '<style:list-level-label-alignment text:label-followed-by="nothing"/>'
+        '</style:list-level-properties>'
+        '</text:outline-level-style>'
+        '<text:outline-level-style text:level="9" loext:num-list-format="%9%" style:num-format="">'
+        '<style:list-level-                    # ── 步驟 3：將使用通用_層級的 <text:p> 轉換為 <text:h> ──
+                    # 先建立 auto-style name → parent style name 的對映
+                    auto_style_map = {}  # auto_style_name → 通用_層級N
+                    for _m in re.finditer(
+                        r'<style:style\b[^>]*style:name="([^"]*)"[^>]*'
+                        r'style:parent-style-name="([^"]*)"[^>]*>',
+                        text
+                    ):
+                        auto_name, parent = _m.group(1), _m.group(2)
+                        if parent in LEVEL_STYLE_MAP:
+                            auto_style_map[auto_name] = parent
 
-    cleaned = 0
-    try:
-        with zipfile.ZipFile(tmp_path, 'r') as zin, \
-             zipfile.ZipFile(odt_path, 'w', compression=zipfile.ZIP_DEFLATED) as zout:
-            for item in zin.infolist():
-                data = zin.read(item.filename)
-                if item.filename == 'content.xml':
+                    def _get_level(sname):
+                        if sname in LEVEL_STYLE_MAP:
+                            return LEVEL_STYLE_MAP[sname]
+                        if sname in auto_style_map:
+                            return LEVEL_STYLE_MAP.get(auto_style_map[sname])
+                        return None
+
+                    # 堆疊式掃描器：<text:p> → <text:h>
+                    # 注意：自閉合標籤（<text:h/>）不進入堆疊，也不需要配對閉合標籤
+                    TAG_PAT = re.compile(
+                        r'<text:h\b[^>]*/>'     # 自閉合 <text:h/>
+                        r'|<text:h\b[^>]*>'     # 既有 <text:h> opening
+                        r'|</text:h>'           # </text:h>
+                        r'|<text:p\b[^>]*/>'   # 自閉合 <text:p/>
+                        r'|<text:p\b[^>]*>'    # <text:p> opening
+                        r'|</text:p>'           # </text:p>
+                    )
+                    result_parts = []
+                    pos = 0
+                    # 堆疊：'h' 代表此層需要把 </text:p> 改 </text:h>，'p' 不需要
+                    tag_stack = []
+
+                    for _m in TAG_PAT.finditer(text):
+                        result_parts.append(text[pos:_m.start()])
+                        raw = _m.group(0)
+                        pos = _m.end()
+
+                        if raw.endswith('/>'):
+                            # 自閉合標籤（空段落），原樣保留，不進入堆疊
+                            result_parts.append(raw)
+
+                        elif raw.startswith('<text:h'):
+                            # 既有 <text:h>：確保有 outline-level 屬性
+                            style_m = re.search(r'text:style-name="([^"]*)"', raw)
+                            level = _get_level(style_m.group(1)) if style_m else None
+                            if level and 'text:outline-level=' not in raw:
+                                raw = re.sub(r'(<text:h\b[^>]*?)(\s*>)',
+                                             rf'\1 text:outline-level="{level}"\2', raw, count=1)
+                            tag_stack.append('h')
+                            result_parts.append(raw)
+
+                        elif raw == '</text:h>':
+                            tag_stack.pop() if tag_stack else None
+                            result_parts.append(raw)
+
+                        elif raw.startswith('<text:p'):
+                            # 判斷是否需要轉換
+                            style_m = re.search(r'text:style-name="([^"]*)"', raw)
+                            level = _get_level(style_m.group(1)) if style_m else None
+                            if level is not None:
+                                # 轉換為 <text:h>
+                                new_raw = re.sub(r'^<text:p\b', '<text:h', raw)
+                                if 'text:outline-level=' not in new_raw:
+                                    new_raw = re.sub(r'(<text:h\b[^>]*?)(\s*>)',
+                                                     rf'\1 text:outline-level="{level}"\2',
+                                                     new_raw, count=1)
+                                tag_stack.append('h')
+                                result_parts.append(new_raw)
+                            else:
+                                tag_stack.append('p')
+                                result_parts.append(raw)
+
+                        elif raw == '</text:p>':
+                            top = tag_stack.pop() if tag_stack else 'p'
+                            if top == 'h':
+                                result_parts.append('</text:h>')
+                            else:
+                                result_parts.append(raw)
+
+                        else:
+                            result_parts.append(raw)
+
+                    result_parts.append(text[pos:])
+                    text = ''.join(result_parts)
+
+                    # ── 安全防護：修復可能誤插的損壞自閉合標籤 ──
+                    # 若原始 ODT 中有 <text:h attr/> 自閉合，堆疊掃描器可能因
+                    # `endswith('/')` 判斷不精確而誤把它當 opening tag 處理，
+                    # 產生 <text:h attr/ text:outline-level="N"> 的損壞形式。
+                    # 此步驟將其還原為正確的自閉合標籤。
+                    text = re.sub(
+                        r'<text:h(\b[^>]*?)/ text:outline-level="\d+"(\s*>)',
+                        r'<text:h\1/>',
+                        text
+                    )
+                    text = re.sub(
+                        r'<text:p(\b[^>]*?)/ text:outline-level="\d+"(\s*>)',
+                        r'<text:p\1/>',
+                        text
+                    )
+
+                    data = text.encode('utf-8')
+
+                elif item.filename == 'styles.xml':
                     text = data.decode('utf-8', errors='replace')
-                    def _strip_list_attr(m):
-                        nonlocal cleaned
+
+                    # ── 步驟 4：修正通用_層級樣式定義，改用 default-outline-level ──
+                    # 注意：styles.xml 中的 <style:style> 是自閉合標籤（/>），安全使用 [^>]* 即可
+                    def _convert_style_to_outline(m):
+                        nonlocal route_converted
                         tag = m.group(0)
-                        parent_match = re.search(r'style:parent-style-name="([^"]*)"', tag)
-                        if not parent_match:
+                        name_match = re.search(r'style:name="([^"]*)"', tag)
+                        if not name_match:
                             return tag
-                        parent = parent_match.group(1)
-                        if parent not in target_parents:
+                        sname = name_match.group(1)
+                        if sname == '通用多層清單':
+                            # 關鍵修正：將「通用多層清單」這個父樣式也剝除 list-style-name 與 list-level，並設為 default-outline-level="5"
+                            new_tag = tag
+                            if 'style:list-style-name=' in new_tag:
+                                new_tag = re.sub(r'\s+style:list-style-name="[^"]*"', '', new_tag)
+                            if 'style:list-level=' in new_tag:
+                                new_tag = re.sub(r'\s+style:list-level="[^"]*"', '', new_tag)
+                            if 'style:default-outline-level=' in new_tag:
+                                new_tag = re.sub(r'style:default-outline-level="[^"]*"', 'style:default-outline-level="5"', new_tag)
+                            else:
+                                new_tag = re.sub(
+                                    r'(style:family="paragraph")',
+                                    r'\1 style:default-outline-level="5"',
+                                    new_tag
+                                )
+                            if new_tag != tag:
+                                route_converted += 1
+                            return new_tag
+
+                        if sname not in LEVEL_STYLE_MAP:
                             return tag
+                        level = LEVEL_STYLE_MAP[sname]
+
+                        # 已有 default-outline-level，不需轉換
+                        if 'style:default-outline-level=' in tag:
+                            return tag
+
+                        # 若有 style:list-style-name，說明走一般清單路線，需轉換
+                        if 'style:list-style-name=' not in tag:
+                            return tag
+
+                        # 移除 list-style-name 和 list-level 屬性
                         new_tag = re.sub(r'\s+style:list-style-name="[^"]*"', '', tag)
+                        new_tag = re.sub(r'\s+style:list-level="[^"]*"', '', new_tag)
+                        # 加入 default-outline-level
+                        new_tag = re.sub(
+                            r'(style:family="paragraph")',
+                            rf'\1 style:default-outline-level="{level}"',
+                            new_tag
+                        )
                         if new_tag != tag:
-                            cleaned += 1
+                            route_converted += 1
                         return new_tag
 
+
+                    # styles.xml 的 <style:style> 通常是自閉合（/>），不需 DOTALL
+                    # 用兩個 pattern 分別處理自閉合和有子元素兩種形式
                     text = re.sub(
-                        r'<style:style\b[^>]*style:family="paragraph"[^>]*>',
-                        _strip_list_attr,
+                        r'<style:style\b[^>]*/>', 
+                        _convert_style_to_outline,
                         text,
                     )
                     text = re.sub(
-                        r'<style:style\b[^>]*style:parent-style-name="[^"]*"[^>]*style:family="paragraph"[^>]*>',
-                        _strip_list_attr,
+                        r'<style:style\b[^>]*>(?:(?!</style:style>).)*</style:style>',
+                        _convert_style_to_outline,
                         text,
+                        flags=re.DOTALL,
                     )
-                    data = text.encode('utf-8')
+
+                    # ── 步驟 5：若有轉換樣式，也同步修正 Outline 章節編號定義 ──
+                    if route_converted > 0:
+                        if re.search(r'<text:outline-style\b', text):
+                            text = re.sub(
+                                r'<text:outline-style\b[^>]*>.*?</text:outline-style>',
+                                OUTLINE_STYLE_XML,
+                                text,
+                                flags=re.DOTALL,
+                            )
+                        else:
+                            text = text.replace(
+                                '</office:styles>',
+                                OUTLINE_STYLE_XML + '\n</office:styles>',
+                                1
+                            )
+
                 zout.writestr(item, data)
-        return cleaned
+
+        return cleaned + route_converted
+
     except Exception:
         if odt_path.exists():
             try:
@@ -1254,6 +1471,7 @@ def _unify_list_style_xml(odt_path: Path):
         raise
     finally:
         _delete_if_exists(tmp_path)
+
 
 
 def _desktop():
