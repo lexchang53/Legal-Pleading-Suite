@@ -714,11 +714,117 @@ def setup_keyboard_bindings(*args):
         pass
 
 
+def export_custom_pdf():
+    """匯出當前 ODT 為 PDF，並在背景調用系統 Python 智慧過濾書籤（聲明隱形，理由保留，無聲明正常顯示）。"""
+    import subprocess
+    from pathlib import Path
+    
+    doc = XSCRIPTCONTEXT.getDocument()
+    if doc is None:
+        return
+        
+    if not doc.hasLocation():
+        try:
+            ctx = XSCRIPTCONTEXT.getComponentContext()
+            smgr = ctx.getServiceManager()
+            toolkit = smgr.createInstanceWithContext("com.sun.star.awt.Toolkit", ctx)
+            msgbox = toolkit.createMessageBox(
+                doc.getCurrentController().getFrame().getContainerWindow(),
+                "errorbox", 1, "匯出失敗", "請先儲存您的文件，再進行 PDF 匯出。"
+            )
+            msgbox.execute()
+        except Exception:
+            pass
+        return
+
+    try:
+        # 1. 取得 ODT 本地系統路徑
+        doc_url = doc.getLocation()
+        odt_sys_path = uno.fileUrlToSystemPath(doc_url)
+        odt_path = Path(odt_sys_path)
+        pdf_path = odt_path.with_suffix(".pdf")
+        pdf_url = uno.systemPathToFileUrl(str(pdf_path.resolve()))
+        
+        # 2. 原生調用 UNO 匯出 PDF
+        import com.sun.star.beans
+        prop = uno.createUnoStruct("com.sun.star.beans.PropertyValue")
+        prop.Name = "FilterName"
+        prop.Value = "writer_pdf_Export"
+        args = (prop,)
+        
+        doc.storeToURL(pdf_url, args)
+        
+        # 3. 調用系統 Python 進行智慧書籤分流與過濾
+        py_code = (
+            "import sys; "
+            "from pypdf import PdfReader, PdfWriter; "
+            f"reader = PdfReader(r'{pdf_path}'); "
+            "writer = PdfWriter(); "
+            "writer.append_pages_from_reader(reader); "
+            "if reader.outline: "
+            "    in_reasons = True; "
+            "    for item in reader.outline: "
+            "        if not isinstance(item, list): "
+            "            title = item.title; "
+            "            clean_title = title.strip(); "
+            "            is_major = title.startswith('　　') or title.strip().startswith('　　') or any(w in clean_title for w in ['訴之聲明', '聲請事項', '追加聲明', '上訴聲明', '事實及理由', '理由']); "
+            "            if is_major: "
+            "                if any(x in clean_title for x in ['聲明', '聲請']): "
+            "                    in_reasons = False; "
+            "                elif '理由' in clean_title: "
+            "                    in_reasons = True; "
+            "            try: "
+            "                page = reader.get_destination_page_number(item); "
+            "                if is_major or in_reasons: "
+            "                    writer.add_outline_item(title, page); "
+            "            except Exception: pass; "
+            f"with open(r'{pdf_path}', 'wb') as f: "
+            "    writer.write(f)"
+        )
+        
+        # 在背景執行 Python
+        res = subprocess.run(["python", "-c", py_code], capture_output=True, text=True)
+        
+        # 4. 跳出精美的成功提示視窗！
+        ctx = XSCRIPTCONTEXT.getComponentContext()
+        smgr = ctx.getServiceManager()
+        toolkit = smgr.createInstanceWithContext("com.sun.star.awt.Toolkit", ctx)
+        
+        if res.returncode == 0:
+            msg = f"PDF 匯出成功！\\n儲存位置：{pdf_path.name}\\n\\n[OK] 智慧書籤分流已啟用：自動過濾聲明項目，完美保留理由大綱。"
+            box_type = "messbox"
+            title = "書狀 PDF 匯出完成"
+        else:
+            msg = f"PDF 匯出成功，但書籤過濾發生錯誤。\\n錯誤資訊：{res.stderr}"
+            box_type = "warningbox"
+            title = "書籤過濾警告"
+            
+        msgbox = toolkit.createMessageBox(
+            doc.getCurrentController().getFrame().getContainerWindow(),
+            box_type, 1, title, msg
+        )
+        msgbox.execute()
+        
+    except Exception as e:
+        try:
+            ctx = XSCRIPTCONTEXT.getComponentContext()
+            smgr = ctx.getServiceManager()
+            toolkit = smgr.createInstanceWithContext("com.sun.star.awt.Toolkit", ctx)
+            msgbox = toolkit.createMessageBox(
+                doc.getCurrentController().getFrame().getContainerWindow(),
+                "errorbox", 1, "匯出發生異常", f"詳細錯誤：{str(e)}"
+            )
+            msgbox.execute()
+        except Exception:
+            pass
+
+
 g_exportedScripts = (
     tab_demote_or_default,
     shift_tab_promote_or_default,
     repair_generic_level_by_style,
     setup_keyboard_bindings,
+    export_custom_pdf,
 )
 '''
 
