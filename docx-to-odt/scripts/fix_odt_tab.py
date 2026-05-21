@@ -90,12 +90,17 @@ def fix_single_odt(filepath: Path) -> bool:
                         root = etree.fromstring(zin.read(item.filename))
                         auto_styles = {}
                         
-                        # 建立自動樣式對應表
+                        # 建立自動樣式對應表並剝除 list-style-name 與 list-level 屬性
                         for style in root.findall('.//style:style', root.nsmap):
                             name = style.get(qn('style', 'name'))
                             parent = style.get(qn('style', 'parent-style-name'))
                             if name and parent:
-                                auto_styles[name] = parent
+                                if parent in LEVEL_MAP:
+                                    auto_styles[name] = parent
+                                if parent in LEVEL_MAP or parent == '通用多層清單':
+                                    for attr in (qn('style', 'list-style-name'), qn('style', 'list-level')):
+                                        if attr in style.attrib:
+                                            del style.attrib[attr]
 
                         # 1. 剝除所有清單外衣 <text:list>
                         while True:
@@ -146,6 +151,8 @@ def fix_single_odt(filepath: Path) -> bool:
                                 level = LEVEL_MAP[name]
                                 if qn('style', 'list-style-name') in style.attrib:
                                     del style.attrib[qn('style', 'list-style-name')]
+                                if qn('style', 'list-level') in style.attrib:
+                                    del style.attrib[qn('style', 'list-level')]
                                 style.set(qn('style', 'default-outline-level'), level)
                             elif name == '通用多層清單':
                                 if qn('style', 'list-style-name') in style.attrib:

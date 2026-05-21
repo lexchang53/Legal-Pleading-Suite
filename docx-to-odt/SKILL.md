@@ -14,6 +14,7 @@ description: "DOCX 轉 ODT 與排版後處理技能。當使用者要求將 DOCX
 2. **懸尾關閉**：徹底關閉中文標點符號懸尾
 3. **行編號修正**：將行編號改成外側（outside）
 4. **格式穩定**：輸出可在 LibreOffice Writer 中穩定編修的 ODT
+5. **檢視與縮放比例鎖定**：鎖定為「最大化視窗、單頁置中、100% 原始大小比例」，避免 LibreOffice 開檔時因自適應寬度而拉伸至 228% 滿版。
 
 ### 🌟 隆重推薦：Tab 鍵智慧升降級巨集！
 
@@ -113,6 +114,7 @@ python "scripts/convert_docx_to_odt.py" "<input.docx>" --output "<output.odt>"
 - 成功關閉標點符號懸尾
 - 成功驗證懸尾已關閉
 - 成功把行編號位置處理為 outside
+- 成功將開檔檢視設定（WindowState、ZoomType、ZoomFactor、ViewLayoutColumns）寫入並驗證
 - 成功輸出最終 ODT
 
 ---

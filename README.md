@@ -114,6 +114,7 @@ Legal-Pleading-Suite/
 - **免巨集原生 Tab 鍵升降級**：100% 原生支援 LibreOffice 的 Tab / Shift-Tab 鍵對「通用_層級 1~4」段落進行大綱樣式與編號的升降級，無需背景監聽巨集。
 - **XML 堆疊安全重整**：使用先進的非 DOTALL 堆疊標記掃描器，徹底解決 DOCX 轉 ODT 後結構損壞導致 LibreOffice 閃退之痛點。
 - **舊 ODT 檔一鍵批次修復工具 (`fix_odt_tab.py`)**：新增極速批次修復工具，支援對單一舊 ODT 檔案或整個資料夾遞迴進行結構重整，完美重現「一、(一) 1. (1)」大綱排版並解放 Tab 鍵功能。
+- **開檔縮放與視窗狀態鎖定**：解決了 ODT 檔案初次開啟時，因視窗最大化而被 LibreOffice 自動拉伸至 228% 滿版的問題。透過 XML 注入技術，強制鎖定為「最大化視窗、單頁置中、100% 原始大小比例」的預設開檔呈現，使左右兩側正常保留灰色背景。
 
 ### 4. `notebooklm-skill/`
 整合 Google NotebookLM 查詢能力。此目錄名稱為 `notebooklm-skill`，其內部技能名稱為 `notebooklm`。可用於管理 notebook library、驗證登入狀態、指定 notebook 或 URL 查詢，以及延伸追問補查。
