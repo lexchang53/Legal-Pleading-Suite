@@ -204,10 +204,35 @@ def build_job(input_docx: Path, output_odt: Path, profile_base: Path) -> Dict[st
     }
 
 
+def _get_lo_python_home() -> Optional[str]:
+    lo_program_dirs = [
+        Path(r"C:\Program Files\LibreOffice\program"),
+        Path(r"C:\Program Files (x86)\LibreOffice\program"),
+    ]
+    for prog_dir in lo_program_dirs:
+        if not prog_dir.exists():
+            continue
+        try:
+            candidates = sorted(
+                [d for d in prog_dir.iterdir()
+                 if d.is_dir() and d.name.startswith("python-core-")],
+                key=lambda d: d.name, reverse=True,
+            )
+            if candidates:
+                return str(candidates[0])
+        except Exception:
+            pass
+    return None
+
+
 def _get_clean_env() -> Dict[str, str]:
     env = os.environ.copy()
     env.pop("PYTHONHOME", None)
     env.pop("PYTHONPATH", None)
+    
+    lo_python_home = _get_lo_python_home()
+    if lo_python_home:
+        env["PYTHONHOME"] = lo_python_home
     return env
 
 
