@@ -75,9 +75,13 @@ Legal-Pleading-Suite/
 ├─ notebooklm-skill/
 │  ├─ SKILL.md
 │  └─ scripts/
-└─ legal-architecture/
+├─ legal-architecture/
+│  ├─ SKILL.md
+│  └─ assets/
+└─ pdf-watermark-remover/
    ├─ SKILL.md
-   └─ assets/
+   ├─ README.md
+   └─ scripts/
 ```
 
 `examples/` 目錄僅保留在實際工作流中會產生、也最值得使用者先理解的兩份階段性產出示例：`撰寫計畫.md` 與 `法律見解驗證報告.md`。
@@ -122,6 +126,9 @@ Legal-Pleading-Suite/
 ### 5. `legal-architecture/`
 法律結構可視化模組。輸出為自包含 HTML 檔案（內嵌 SVG），適合在瀏覽器開啟、列印，或截圖嵌入 Word / PPT。
 
+### 6. [`pdf-watermark-remover/`](pdf-watermark-remover/README.md)
+法院電子卷證去浮水印工具。專為無損清理法院電子卷證（包含下載的電子卷證與閱卷室掃描卷宗）中「四個角落的閱卷人姓名文字浮水印」、「底部的閱卷系統防偽及動態時間戳記字串」，以及自法院閱卷室掃描而成的「四個角落天平圖片浮水印」而設計的自訂 Skill 與獨立 CLI 工具。本工具亦支援自動解除 PDF 唯讀與編輯限制密碼，還原乾淨的 PDF 文件。
+
 ---
 
 ## 環境安裝
@@ -162,13 +169,14 @@ cd Legal-Pleading-Suite
 > **不要**將整個 `Legal-Pleading-Suite/` 母目錄直接放入 AI 工具的技能區（Skills folder）。
 > 多數 AI 工具只會偵測技能區中「直接可見」的技能目錄與其中的 `SKILL.md`，若您只是把整個解壓後的母目錄原封不動放進去，AI 工具通常**無法正確辨識**位於深層子目錄內的技能。
 
-本專案採 Monorepo 結構管理，但真正應加入 AI 工具技能區的，是以下 **5 個核心技能子目錄**：
+本專案採 Monorepo 結構管理，但真正應加入 AI 工具技能區的，是以下 **6 個核心技能子目錄**：
 
 - `draft-pleading/`
 - `pleading-table/`
 - `docx-to-odt/`
 - `notebooklm-skill/`
 - `legal-architecture/`
+- `pdf-watermark-remover/`
 
 也就是說，正確做法通常是：
 
@@ -190,6 +198,7 @@ cd Legal-Pleading-Suite
   - `docx-to-odt/`
   - `notebooklm-skill/`
   - `legal-architecture/`
+  - `pdf-watermark-remover/`
 
 ### 3. 非技能檔案應放哪裡？
 
@@ -204,7 +213,7 @@ cd Legal-Pleading-Suite
 - 將整個 `Legal-Pleading-Suite/` 保留在您自己的專案資料夾、下載資料夾或工作區中，作為說明文件與參考資源
 - `README.md` 供您閱讀安裝方式、工作流與使用說明
 - `examples/` 供您查看範例輸出與預期成果格式
-- 真正要安裝到 AI 工具技能區的，只有前述 5 個技能子目錄
+- 真正要安裝到 AI 工具技能區的，只有前述 6 個技能子目錄
 
 ### 4. NotebookLM 初次使用（如需）
 
@@ -443,6 +452,18 @@ python scripts/run.py notebook_manager.py add \
 
 ```text
 請畫出本案的當事人關係圖與證據鏈分析圖。
+```
+
+### 移除 PDF 浮水印
+
+```text
+請幫我移除這個 PDF 的浮水印：[檔案路徑]
+```
+
+或使用命令行直接呼叫腳本：
+
+```bash
+python pdf-watermark-remover/scripts/remove_watermarks.py -i "輸入.pdf" -o "輸出.pdf"
 ```
 
 ---
