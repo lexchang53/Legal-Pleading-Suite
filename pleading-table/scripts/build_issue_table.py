@@ -89,9 +89,9 @@ def _inject_chinese_numbering(doc: Document) -> int:
     完全不依賴外部檔案。
     """
     NSMAP_LOCAL = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
-    ANCHOR_STYLE = "通用_層絆1"
+    ANCHOR_STYLE = "通用_層級1"
 
-    # --- step 1: 找到模板中套用 通用_層絆1 的段落，取得 numId ---
+    # --- step 1: 找到模板中套用 通用_層級1 的段落，取得 numId ---
     num_id = None
     for p in doc.paragraphs:
         if p.style.name == ANCHOR_STYLE:
@@ -115,7 +115,7 @@ def _inject_chinese_numbering(doc: Document) -> int:
                             break
 
     if num_id is None:
-        print("[WARN] 無法從 pleading-tmpl.docx 找到 通用_層絆1 的 numId，使用 fallback numId=1")
+        print("[WARN] 無法從 pleading-tmpl.docx 找到 通用_層級1 的 numId，使用 fallback numId=1")
         return 1
 
     # --- step 2: 反查 abstractNumId ---
@@ -409,7 +409,12 @@ def _write_statement_section(doc: Document, payload: dict, num_id: int) -> None:
     if statement_items:
         _add_numbered_para(doc, "通用_層級1", "聲明：", num_id, 0)
         for item in statement_items:
-            _add_numbered_para(doc, "通用_層級2", item, num_id, 1)
+            if re.match(r'^[壹貳參肆伍陸柒捌玖拾]+[、，：:]', item):
+                _add_numbered_para(doc, "通用_層級2", item, num_id, 1)
+            elif re.match(r'^[（(][一二三四五六七八九十百]+[）)]', item):
+                _add_numbered_para(doc, "通用_層級3", item, num_id, 2)
+            else:
+                _add_numbered_para(doc, "通用_層級2", item, num_id, 1)
     else:
         _add_numbered_para(doc, "通用_層級1", f"聲明：{statement_text}", num_id, 0)
 
@@ -710,10 +715,11 @@ def build_issue_table(
             party_status=payload["party_status"],
         )
     else:
+        md_headers = payload.get("md_headers") or {}
         header_utils.merge_and_write_header(
             doc,
             header_data=None,
-            md_headers=None,
+            md_headers=md_headers,
             is_issue_table=True,
             party_status=payload["party_status"],
         )
