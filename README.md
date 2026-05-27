@@ -72,6 +72,12 @@ Legal-Pleading-Suite/
 ├─ docx-to-odt/
 │  ├─ SKILL.md
 │  └─ scripts/
+├─ legal-opinion/
+│  ├─ SKILL.md
+│  ├─ scripts/
+│  ├─ references/
+│  └─ assets/
+│     └─ opinion-tmpl.docx
 ├─ notebooklm-skill/
 │  ├─ SKILL.md
 │  └─ scripts/
@@ -120,13 +126,20 @@ Legal-Pleading-Suite/
 - **舊 ODT 檔一鍵批次修復工具 (`fix_odt_tab.py`)**：新增極速批次修復工具，支援對單一舊 ODT 檔案或整個資料夾遞迴進行結構重整，完美重現「一、(一) 1. (1)」大綱排版並解放 Tab 鍵功能。
 - **開檔縮放與視窗狀態鎖定**：解決了 ODT 檔案初次開啟時，因視窗最大化而被 LibreOffice 自動拉伸至 228% 滿版的問題。透過 XML 注入技術，強制鎖定為「最大化視窗、單頁置中、100% 原始大小比例」的預設開檔呈現，使左右兩側正常保留灰色背景。
 
-### 4. `notebooklm-skill/`
+### 4. `legal-opinion/`
+法律研究、契約審核、風險分析與正式書面意見的核心撰寫引擎。當任務為產出提供給客戶、公司內部或決策者的「函文式法律意見書」或「契約審核備忘錄」時使用（若為法院訴訟書狀，請改用 `draft-pleading`）。
+
+- **深度法源驗證**：優先整合 NotebookLM 內部查詢與 AnySearch 外部網路搜尋，進行交叉驗證並標示風險。
+- **標準函文格式**：產出包含「主旨、說明（事實/分析/結論）、保留事項」等結構嚴謹的正式文件。
+- **獨立排版引擎**：草稿確認後，自動呼叫內部腳本套用 `assets/opinion-tmpl.docx` 輸出專業排版的 Word 檔。
+
+### 5. `notebooklm-skill/`
 整合 Google NotebookLM 查詢能力。此目錄名稱為 `notebooklm-skill`，其內部技能名稱為 `notebooklm`。可用於管理 notebook library、驗證登入狀態、指定 notebook 或 URL 查詢，以及延伸追問補查。
 
-### 5. `legal-architecture/`
+### 6. `legal-architecture/`
 法律結構可視化模組。輸出為自包含 HTML 檔案（內嵌 SVG），適合在瀏覽器開啟、列印，或截圖嵌入 Word / PPT。
 
-### 6. [`pdf-watermark-remover/`](pdf-watermark-remover/README.md)
+### 7. [`pdf-watermark-remover/`](pdf-watermark-remover/README.md)
 法院電子卷證去浮水印工具。專為無損清理法院電子卷證（包含下載的電子卷證與閱卷室掃描卷宗）中「四個角落的閱卷人姓名文字浮水印」、「底部的閱卷系統防偽及動態時間戳記字串」，以及自法院閱卷室掃描而成的「四個角落天平圖片浮水印」而設計的自訂 Skill 與獨立 CLI 工具。本工具亦支援自動解除 PDF 唯讀與編輯限制密碼，還原乾淨的 PDF 文件。
 
 ---
@@ -169,11 +182,12 @@ cd Legal-Pleading-Suite
 > **不要**將整個 `Legal-Pleading-Suite/` 母目錄直接放入 AI 工具的技能區（Skills folder）。
 > 多數 AI 工具只會偵測技能區中「直接可見」的技能目錄與其中的 `SKILL.md`，若您只是把整個解壓後的母目錄原封不動放進去，AI 工具通常**無法正確辨識**位於深層子目錄內的技能。
 
-本專案採 Monorepo 結構管理，但真正應加入 AI 工具技能區的，是以下 **6 個核心技能子目錄**：
+本專案採 Monorepo 結構管理，但真正應加入 AI 工具技能區的，是以下 **7 個核心技能子目錄**：
 
 - `draft-pleading/`
 - `pleading-table/`
 - `docx-to-odt/`
+- `legal-opinion/`
 - `notebooklm-skill/`
 - `legal-architecture/`
 - `pdf-watermark-remover/`
@@ -182,8 +196,8 @@ cd Legal-Pleading-Suite
 
 1. 先下載或解壓縮整個 `Legal-Pleading-Suite/`
 2. 打開該目錄
-3. 找出上述 5 個子目錄
-4. 將這 5 個子目錄個別移入您的 AI 工具技能區，或依工具支援方式逐一加入
+3. 找出上述 7 個子目錄
+4. 將這 7 個子目錄個別移入您的 AI 工具技能區，或依工具支援方式逐一加入
 5. 確認每個技能目錄底下都可直接看到 `SKILL.md`
 
 錯誤示意（不要這樣做）：
@@ -196,6 +210,7 @@ cd Legal-Pleading-Suite
   - `draft-pleading/`
   - `pleading-table/`
   - `docx-to-odt/`
+  - `legal-opinion/`
   - `notebooklm-skill/`
   - `legal-architecture/`
   - `pdf-watermark-remover/`
