@@ -42,6 +42,13 @@ def remove_watermarks(input_path, output_path, margin_top=45.0, margin_bottom=45
 
     try:
         doc = fitz.open(input_path)
+        if doc.is_encrypted:
+            print("偵測到加密的 PDF 檔案，正在嘗試解密...")
+            if not doc.authenticate(""):
+                print("錯誤：無法解密此 PDF 檔案，可能需要正確的密碼權限。", file=sys.stderr)
+                return False
+            else:
+                print("成功解密 PDF 檔案！已解除編輯與讀取限制。")
         total_pages = len(doc)
         print(f"正在載入 PDF: {input_path} (共 {total_pages} 頁)")
         
