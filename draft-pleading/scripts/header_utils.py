@@ -49,7 +49,7 @@ IDENTITY_ROLES = re.compile(
 CONTINUATION_KEYWORDS = re.compile(
     r'(地址[：:]?|地址請詳卷|住[：:]?|住所[：:]?|設[：:]?|居[：:]?|通訊地址[：:]?|送達地址[：:]?|'
     r'電話[：:]?|電子郵件[：:]?|[Ee]-?[Mm]ail[：:]?|傳真[：:]?|統一編號[：:]?|統編[：:]?|'
-    r'身分證[字號]*[：:]?|律師事務所[：:]?|事務所[：:]?|同上|地址同上|請詳卷)'
+    r'身分證明文件字號[：:]?|身分證[字號]*[：:]?|律師事務所[：:]?|事務所[：:]?|同上|地址同上|請詳卷)'
 )
 
 
@@ -292,7 +292,7 @@ def write_header_line(doc, text, style_name):
 
     # 2. 為就...事：
     t = text.strip()
-    if ('為就' in t and END_PATTERN.search(t)) or (END_PATTERN.search(t) and len(t) > 5):
+    if (('為就' in t or '聲請' in t) and END_PATTERN.search(t)) or (END_PATTERN.search(t) and len(t) > 5):
         p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_預設'))
         normalize_header_paragraph(p)
         p.add_run(t)
@@ -340,7 +340,7 @@ def extract_header(docx_path):
             'element': copy.deepcopy(p._element),
         })
 
-        if ('為就' in text and END_PATTERN.search(text)) or \
+        if (('為就' in text or '聲請' in text) and END_PATTERN.search(text)) or \
            (END_PATTERN.search(text) and len(text) > 5):
             break
 
@@ -384,7 +384,7 @@ def extract_md_header_info(md_blocks):
         t_norm = t.replace('\u3000', '').replace(' ', '')
 
         # 遇到為就...事：→ 收集並結束狀首區間
-        if ('為就' in t and END_PATTERN.search(t)) or (END_PATTERN.search(t) and len(t) > 5):
+        if (('為就' in t or '聲請' in t) and END_PATTERN.search(t)) or (END_PATTERN.search(t) and len(t) > 5):
             if not info['for_matter']:
                 info['for_matter'] = t
             info['header_lines'].append({'style': '書狀_預設', 'text': text})
@@ -503,7 +503,7 @@ def merge_and_write_header(doc, header_data=None, md_headers=None,
                 continue
 
             # 為就...事：
-            if ('為就' in t and END_PATTERN.search(t)) or (END_PATTERN.search(t) and len(t) > 5):
+            if (('為就' in t or '聲請' in t) and END_PATTERN.search(t)) or (END_PATTERN.search(t) and len(t) > 5):
                 text = md_headers.get('for_matter') or text
                 t = text.strip()
                 if is_issue_table:
@@ -565,7 +565,7 @@ def merge_and_write_header(doc, header_data=None, md_headers=None,
                     continue
 
                 # 為就...事：
-                if ('為就' in t and END_PATTERN.search(t)) or (END_PATTERN.search(t) and len(t) > 5):
+                if (('為就' in t or '聲請' in t) and END_PATTERN.search(t)) or (END_PATTERN.search(t) and len(t) > 5):
                     if is_issue_table:
                         m = re.match(r'(為就.+?(?:事件|案件))', t)
                         case_desc = m.group(1) if m else '為就本案'

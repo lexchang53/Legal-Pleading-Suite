@@ -330,7 +330,7 @@ def main():
             continue
 
         if skip_header_blocks:
-            if '為就' in block.text and re.search(r'事[：:]\s*$', block.text):
+            if ('為就' in block.text or '聲請' in block.text) and re.search(r'事[：:]\s*$', block.text):
                 skip_header_blocks = False
             continue
 
@@ -397,7 +397,7 @@ def main():
                     run.bold = True
 
         elif block.style == '書狀_預設' and last_heading_ilvl is not None:
-            if block.text.strip() == '證據或文件清單：':
+            if block.text.strip() in ('證據或文件清單：', '附件：'):
                 blank = doc.add_paragraph()
                 blank.paragraph_format.keep_with_next = True
                 p = _add_paragraph_with_bold(doc, block.text, block.style)
@@ -408,7 +408,7 @@ def main():
                 p = _add_paragraph_with_bold(doc, block.text, block.style)
                 p.paragraph_format.left_indent = Twips(BODY_INDENT_MAP[last_heading_ilvl])
         else:
-            if block.text.strip() == '證據或文件清單：':
+            if block.text.strip() in ('證據或文件清單：', '附件：'):
                 blank = doc.add_paragraph()
                 blank.paragraph_format.keep_with_next = True
                 p = _add_paragraph_with_bold(doc, block.text, block.style)

@@ -282,8 +282,8 @@ def parse_markdown(md_path, content=None):
                 table_headers = []
                 table_rows = []
 
-        _SEMANTIC_DECL_WORDS = {'訴之聲明', '聲明', '減縮後訴之聲明', '聲明事項', '反訴聲明', '上訴聲明', '答辯聲明', '抗告聲明', '追加聲明', '變更聲明'}
-        _SEMANTIC_REASON_WORDS = {'事實與理由', '理由'}
+        _SEMANTIC_DECL_WORDS = {'訴之聲明', '聲明', '減縮後訴之聲明', '聲明事項', '反訴聲明', '上訴聲明', '答辯聲明', '抗告聲明', '追加聲明', '變更聲明', '聲請審查客體', '應受判決事項之聲明', '主要爭點'}
+        _SEMANTIC_REASON_WORDS = {'事實與理由', '理由', '聲請理由'}
 
         h2_m = H2_PATTERN.match(line.strip())
         if h2_m:
