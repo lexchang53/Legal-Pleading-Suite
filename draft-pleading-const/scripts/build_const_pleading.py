@@ -56,10 +56,6 @@ def main():
         draft_pleading / "assets" / "pleading-tmpl.docx",
         "draft-pleading template",
     )
-    postprocess = existing_path(
-        skill_dir / "scripts" / "postprocess_const_pleading.py",
-        "constitutional pleading postprocess script",
-    )
     convert = existing_path(
         docx_to_odt / "scripts" / "convert_docx_to_odt.py",
         "docx-to-odt conversion script",
@@ -77,7 +73,6 @@ def main():
         "--output",
         str(docx),
     ])
-    run_step([sys.executable, str(postprocess), str(docx)])
     run_step([
         sys.executable,
         str(convert),
@@ -87,6 +82,14 @@ def main():
         "--timeout",
         str(args.timeout),
     ])
+
+    fix_odt_script = skill_dir / "scripts" / "fix_odt_output.py"
+    if fix_odt_script.exists():
+        run_step([
+            sys.executable,
+            str(fix_odt_script),
+            str(odt),
+        ])
 
     print(f"[OK] DOCX: {docx}")
     print(f"[OK] ODT: {odt}")

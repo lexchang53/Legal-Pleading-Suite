@@ -63,9 +63,9 @@ def main():
         skills_dir = os.path.dirname(os.path.dirname(os.path.abspath(script_dir)))
         odt_script = os.path.join(skills_dir, "docx-to-odt", "scripts", "convert_docx_to_odt.py")
         
-        # fallback: 檢查絕對路徑
+        # fallback: 檢查使用者家目錄下的預設安裝路徑
         if not os.path.exists(odt_script):
-            odt_script = r"C:\Users\lex\.gemini\config\skills\docx-to-odt\scripts\convert_docx_to_odt.py"
+            odt_script = os.path.join(os.path.expanduser("~"), ".gemini", "config", "skills", "docx-to-odt", "scripts", "convert_docx_to_odt.py")
 
         if not os.path.exists(odt_script):
             print(f"[ERROR] 找不到 docx-to-odt 轉換腳本: {odt_script}，無法執行 ODT 轉換！", file=sys.stderr)

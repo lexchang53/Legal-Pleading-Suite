@@ -81,6 +81,19 @@ description: "DOCX 轉 ODT 與排版後處理技能。當使用者要求將 DOCX
 python "scripts/convert_docx_to_odt.py" "<input.docx>" --output "<output.odt>"
 ```
 
+### 💡 額外工具：修復與升級既有的 ODT 檔案（免重新轉檔）
+
+如果您有舊的 ODT 檔案（或一整資料夾的舊 ODT 檔案）因為內部 XML 結構問題而無法使用 Tab 原生升降級，您可以直接呼叫升級腳本。它支援單一檔案或整個資料夾的批次升級：
+
+*   **單一檔案升級：**
+    ```powershell
+    python "scripts/fix_existing_odt.py" "<path/to/existing.odt>"
+    ```
+*   **資料夾內所有 ODT 批次升級：**
+    ```powershell
+    python "scripts/fix_existing_odt.py" "<path/to/directory_with_odts>"
+    ```
+
 ### Step 3：腳本實際流程
 
 腳本必須依序完成：
@@ -185,6 +198,7 @@ Markdown --> draft-pleading --> DOCX --> docx-to-odt --> ODT
 本 skill 的核心檔案如下：
 
 - `scripts/convert_docx_to_odt.py`
+- `scripts/fix_existing_odt.py`
 - `references/libreoffice-notes.md`
 
 ---

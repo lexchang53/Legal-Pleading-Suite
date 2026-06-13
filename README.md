@@ -65,6 +65,10 @@ Legal-Pleading-Suite/
 │  ├─ references/
 │  └─ assets/
 │     └─ pleading-tmpl.docx
+├─ draft-pleading-const/
+│  ├─ SKILL.md
+│  ├─ scripts/
+│  └─ references/
 ├─ pleading-table/
 │  ├─ SKILL.md
 │  ├─ scripts/
@@ -129,7 +133,7 @@ Legal-Pleading-Suite/
 在有明確需求時，將 DOCX 轉換為 ODT，供 LibreOffice 工作流繼續編修。
 - **免巨集原生 Tab 鍵升降級**：100% 原生支援 LibreOffice 的 Tab / Shift-Tab 鍵對「通用_層級 1~4」段落進行大綱樣式與編號的升降級，無需背景監聽巨集。
 - **XML 堆疊安全重整**：使用先進的非 DOTALL 堆疊標記掃描器，徹底解決 DOCX 轉 ODT 後結構損壞導致 LibreOffice 閃退之痛點。
-- **舊 ODT 檔一鍵批次修復工具 (`fix_odt_tab.py`)**：新增極速批次修復工具，支援對單一舊 ODT 檔案或整個資料夾遞迴進行結構重整，完美重現「一、(一) 1. (1)」大綱排版並解放 Tab 鍵功能。
+- **舊 ODT 檔一鍵批次修復工具 (`fix_existing_odt.py`)**：新增極速批次修復工具，支援對單一舊 ODT 檔案或整個資料夾遞迴進行結構重整，完美實現以 Tab / Shift-Tab 鍵 將「一、(一) 1. (1)」多層次清單及段落樣式升降級的功能。
 - **開檔縮放與視窗狀態鎖定**：解決了 ODT 檔案初次開啟時，因視窗最大化而被 LibreOffice 自動拉伸至 228% 滿版的問題。透過 XML 注入技術，強制鎖定為「最大化視窗、單頁置中、100% 原始大小比例」的預設開檔呈現，使左右兩側正常保留灰色背景。
 
 ### 4. `legal-opinion/`
@@ -159,6 +163,9 @@ Legal-Pleading-Suite/
 - 強制正反雙向查證（正面判例 + 反面判例），有效降低確認偏誤風險。
 
 > 本模組建立於 [法律偵探 (@aa0101181514)](https://github.com/aa0101181514) 所開發的開源工具 [tw-legal-rag](https://github.com/aa0101181514/tw-legal-rag) 之上，感謝作者提供台灣裁判語義搜尋的基礎能力。
+
+### 9. `draft-pleading-const/`
+憲法審查聲請書撰寫技能。負責將對話中準備好的違憲論點大綱與 Markdown 結構，套入符合憲法法庭與司法院要求之聲請書格式骨架，自動生成格式嚴謹且排版美觀的聲請書 Word 與 ODT 檔案。
 
 ---
 
@@ -476,11 +483,11 @@ python scripts/run.py notebook_manager.py add \
 
 * **修復單一舊 ODT 檔案**：
   ```bash
-  python docx-to-odt/scripts/fix_odt_tab.py "路徑/你的舊書狀.odt"
+  python docx-to-odt/scripts/fix_existing_odt.py "路徑/你的舊書狀.odt"
   ```
 * **批次遞迴修復整個資料夾（含所有子目錄）下的所有舊 ODT 檔案**：
   ```bash
-  python docx-to-odt/scripts/fix_odt_tab.py "C:\Users\lex\Dropbox\我的案件書狀"
+  python docx-to-odt/scripts/fix_existing_odt.py "你的案件書狀資料夾路徑"
   ```
 
 ### 生成法律可視化圖
