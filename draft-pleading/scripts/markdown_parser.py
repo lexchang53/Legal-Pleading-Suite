@@ -290,12 +290,12 @@ def parse_markdown(md_path, content=None):
             h2_inner = h2_m.group(1).strip()
             h2_inner_no_space = h2_inner.replace('\u3000', '').replace(' ', '')
             if h2_inner_no_space in _SEMANTIC_DECL_WORDS:
-                b = Block(style='書狀_預設', text=f'**　　{h2_inner}**')
+                b = Block(style='書狀_區塊標題', text=f'**　　{h2_inner}**')
                 b.is_semantic_heading = True
                 blocks.append(b)
                 continue
             elif h2_inner_no_space in _SEMANTIC_REASON_WORDS:
-                b = Block(style='書狀_預設', text=f'**　　{h2_inner}**', is_override_trigger=True)
+                b = Block(style='書狀_區塊標題', text=f'**　　{h2_inner}**', is_override_trigger=True)
                 b.is_semantic_heading = True
                 blocks.append(b)
                 continue
@@ -316,11 +316,13 @@ def parse_markdown(md_path, content=None):
             continue
 
         if line.startswith('　　') or line.startswith('**　　') or line.startswith('__　　'):
-            if no_space.endswith('聲明') or no_space.endswith('理由') or no_space.endswith('事項') or no_space.endswith('聲明事項') or no_space.endswith('聲請事項'):
+            if (no_space.endswith('聲明') or no_space.endswith('理由') or 
+                no_space.endswith('事項') or no_space.endswith('聲明事項') or 
+                no_space.endswith('聲請事項') or no_space in ('聲請審查客體', '主要爭點')):
                 clean_text = line.rstrip()
                 if not clean_text.startswith('**') and not clean_text.startswith('__'):
                     clean_text = f'**{clean_text}**'
-                b = Block(style='書狀_預設', text=clean_text, is_override_trigger=True)
+                b = Block(style='書狀_區塊標題', text=clean_text, is_override_trigger=True)
                 b.is_semantic_heading = True
                 blocks.append(b)
                 continue
@@ -409,10 +411,14 @@ def parse_markdown(md_path, content=None):
                 continue
 
         if re.match(r'^中華民國\s*\d+\s*年', stripped) or re.match(r'^民國\s*\d+\s*年', stripped):
-            norm_text = stripped.replace('中華民國', '民國')
             if has_seen_gongjian:
+                # 狀尾日期必須使用「中華民國」完整前綴
+                norm_text = stripped
+                if stripped.startswith('民國'):
+                    norm_text = '中華' + stripped
                 blocks.append(Block(style='書狀_狀尾日期', text=norm_text))
             else:
+                norm_text = stripped.replace('中華民國', '民國')
                 blocks.append(Block(style='書狀_簽章', text=norm_text))
             continue
 

@@ -56,7 +56,8 @@ TARGET_STYLES = [
     '書狀_狀尾日期', '書狀_謹狀',
     '書狀_被上證據編號', '書狀_被上證據編號10', '書狀_證據編號', '書狀_證據編號10',
     '書狀_狀首當事人', '書狀_清單',
-    '通用_層級1', '通用_層級2', '通用_層級3', '通用_層級4'
+    '通用_層級1', '通用_層級2', '通用_層級3', '通用_層級4',
+    '書狀_區塊標題'
 ]
 
 # ==============================================================================
@@ -309,8 +310,11 @@ def main():
     last_heading_ilvl = None  
 
     import re
+    cjk_num_pat = re.compile(r'^[壹貳參肆伍陸柒捌玖拾]+[、]')
+    current_major_heading = None
+
     has_declaration = any(
-        getattr(b, 'is_semantic_heading', False) and b.text.strip().replace('*', '').endswith('聲明')
+        getattr(b, 'is_semantic_heading', False) and b.text.strip().replace('*', '').replace('_', '').endswith('聲明')
         for b in blocks
     )
     current_section = '聲明' if has_declaration else None
@@ -340,21 +344,28 @@ def main():
             blank.style = doc.styles['書狀_預設']
             para_count += 1
 
+        # 檢測國字大寫標題（壹、貳、參...），觸發後續編號重設
+        text_clean = block.text.replace('*', '').replace('_', '').replace('\u3000', '').replace(' ', '').strip()
+        if cjk_num_pat.match(text_clean):
+            block.is_override_trigger = True
+            current_major_heading = text_clean
+            last_heading_ilvl = None  # 遇大標題時清除前段縮排記憶
+
         if block.is_override_trigger:
             current_num_id = create_override_num(doc, abstract_num_id)
             _last_l1_num_id = current_num_id
             _need_l2_reset = False
 
         if getattr(block, 'is_semantic_heading', False):
+            # 保持寫入原始 block.text（含 ** 與全形空白），搭配範本中「無縮排」的 書狀_區塊標題 樣式
             p = _add_paragraph_with_bold(doc, block.text, block.style)
             
-            text_clean = block.text.replace('*', '').replace('\u3000', '').replace(' ', '').strip()
-            if text_clean.endswith('聲明') or text_clean == '聲明事項':
+            if text_clean.endswith('聲明') or text_clean == '聲明事項' or text_clean == '應受判決事項聲明':
                 current_section = '聲明'
-            elif text_clean in ('事實與理由', '理由'):
-                current_section = '理由'
+            elif text_clean in ('事實與理由', '理由', '聲請理由'):
+                current_section = '理由' if text_clean != '聲請理由' else '聲請理由'
 
-            if current_section == '理由':
+            if current_section in ('理由', '聲請理由'):
                 p.paragraph_format.keep_with_next = True
             else:
                 p.paragraph_format.keep_with_next = False
@@ -375,7 +386,7 @@ def main():
             
             effective_outline_level = None
             if block.ilvl == 0 and current_section != '聲明':
-                if current_section == '理由' or current_section is None:
+                if current_section in ('理由', '聲請理由') or current_section is None:
                     effective_outline_level = 0
 
             p = write_paragraph(doc, block, effective_num_id, outline_level=effective_outline_level)
@@ -390,7 +401,13 @@ def main():
 
             should_bold = False
             if getattr(block, 'has_child', False) and current_section != '聲明':
-                should_bold = True
+                if current_section == '聲請理由':
+                    # 憲法聲請書中，只有在「貳、應受審查客體之違憲理由」下的一級論點，應該加粗體
+                    if current_major_heading and '違憲理由' in current_major_heading:
+                        should_bold = True
+                else:
+                    # 預設民事書狀，只要有子段落且不在「聲明」區，即加粗
+                    should_bold = True
             
             if should_bold:
                 for run in p.runs:
@@ -416,6 +433,9 @@ def main():
                 p.paragraph_format.left_indent = Twips(0)
             else:
                 p = _add_paragraph_with_bold(doc, block.text, block.style)
+                if cjk_num_pat.match(text_clean):
+                    p.paragraph_format.first_line_indent = Cm(0)
+                    p.paragraph_format.left_indent = Cm(0)
                 
             last_heading_ilvl = None  
 
