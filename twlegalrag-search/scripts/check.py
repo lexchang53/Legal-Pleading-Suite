@@ -6,6 +6,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Windows console UTF-8 強制設定防禦
+if sys.platform == "win32":
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 
 def fail(message: str, code: int = 1) -> int:
     print(message, file=sys.stderr)
@@ -36,7 +44,7 @@ def main() -> int:
             data = json.load(f)
         answer = answer_path.read_text(encoding="utf-8")
 
-        # 重建 Judgment 物件，對齊 cli.py 的轉換格式
+        # 重建 Judgment 物件，對齊 cli.py 的轉換格式並映射 2.2.0 欄位
         hits = []
         for i, j in enumerate(data.get("judgments", [])):
             hits.append(
@@ -53,6 +61,10 @@ def main() -> int:
                     case_category=j.get("case_category"),
                     fulltext=j.get("fulltext_excerpt", ""),
                     cited_articles=j.get("cited_articles", []),
+                    case_history=j.get("case_history"),
+                    hit_excerpt=j.get("hit_excerpt"),
+                    fulltext_total_chars=j.get("fulltext_total_chars"),
+                    fulltext_complete=j.get("fulltext_complete", True),
                 )
             )
 
