@@ -25,4 +25,7 @@
 **/test-prompts.json
 
 !legal-research/
+!twlegalrag-search/
+!pdf-watermark-remover/
+!contract-reviewer/
 !examples/

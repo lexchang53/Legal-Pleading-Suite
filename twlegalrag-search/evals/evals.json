@@ -1,0 +1,47 @@
+{
+  "skill_name": "twlegalrag-search",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "幫我查詢台灣法院關於「競業禁止條款效力」的實務見解，我需要用在準備書狀裡。",
+      "expected_output": "使用 twlegalrag health 確認服務 → 以適當查詢詞執行 search 確認方向 → 使用 pack 產生 bundle → 擷取最高法院裁判優先排列 → 以 [J1] [J2] 格式整理見解 → 最終以 check.py 驗證引用 (Exit code 0)",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "prompt": "我剛寫完一份答辯狀，裡面有引用 [J1] 到 [J5] 的判決，幫我用之前的 bundle.json 檢查引用有沒有對。",
+      "expected_output": "確認 bundle.json 與答辯狀文字檔存在 → 使用 scripts/check.py 執行引用檢查 → 回報每則引用的驗證結果與 exit code → 指出需修正的引用及原因",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "prompt": "我要起草一份租賃訴訟書狀，房東主張終止契約但承租人拒絕搬遷，需要引用判決、函釋與民法法條。",
+      "expected_output": "執行【模式 A】統一 CLI 管線：twlegalrag health → search 預覽 → pack 打包裁判理由 → ref-search 搜尋租賃函釋並以 ref --full 查核全文與效力 → law 查詢民法第440條/455條現行條文 → 起草書狀並以 scripts/check.py 執行退出碼驗收",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 4,
+      "prompt": "公司最近有工會幹部被調職的爭議，請幫我檢索相關的勞動裁決，我要了解裁決委員會的態度。",
+      "expected_output": "使用 health 確認服務 → 建立適當查詢詞（如「工會幹部 調職 不當勞動行為」）search 預覽 → 使用 pack 產生 bundle → 正確辨識勞動裁決（arb: 標明為勞動部不當勞動行為裁決委員會見解非法院判決）→ 標註 [Jn] 引用並以 check.py 驗證",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 5,
+      "prompt": "請幫我查勞動部關於罹癌勞工留職停薪期滿復職與解僱審查的行政函釋。",
+      "expected_output": "依【模式 B】執行二階段函釋查驗：MCP search_legal_references（或 CLI ref-search）檢索候選 → 強制以 get_legal_reference（或 CLI ref --full）調閱完整主旨說明與 status 效力狀態 → 註明發布機關、完整發文字號與有效狀態 → 嚴禁稱作法院判決",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 6,
+      "prompt": "在無 MCP 連線之環境中，使用者要求查詢「財政部建物管理維護契約印花稅函釋」與「民法第 184 條現行規定」。",
+      "expected_output": "自動切換至 CLI 兜底：執行 twlegalrag ref-search 檢索財政部令函 → 執行 twlegalrag ref '台財稅第881945861號' --full 取得全文並確認 status: active_verified → 執行 twlegalrag law 民法 184 查核現行條文與最後修正日期 → 輸出結構化結果，無縫完成查詢",
+      "files": [],
+      "assertions": []
+    }
+  ]
+}
