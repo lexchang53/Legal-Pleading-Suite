@@ -74,7 +74,7 @@
 | 模組目錄 | 類型 | 說明 |
 |---|---|---|
 | [`legal-research/`](legal-research/) | **核心研究** | 法律問題研究專用引擎。以爭點為單位展開多輪攻防推演，語義觸發裁判檢索，將結論固化為 `strategy_memo.md`。 |
-| [`twlegalrag-search/`](twlegalrag-search/) | **法源檢索** | 臺灣法院裁判（CLI）與 78 部會行政令函（MCP）雙軌檢索、效力狀態查驗與引用檢查工具。 |
+| [`twlegalrag-search/`](twlegalrag-search/) | **法源檢索** | 臺灣法院裁判、78 部會行政函釋與現行法條之語義檢索、效力查驗與引用防偽工具（對齊 `tw-legal-rag` v2.3.0 雙模式架構）。 |
 | [`draft-pleading/`](draft-pleading/) | **書狀排版** | 訴訟書狀核心格式化引擎。讀取研究成果，依 CRAC 論證格式生成 Markdown 草稿，並以專屬引擎渲染為 Word 檔。 |
 | [`draft-pleading-const/`](draft-pleading-const/) | **憲法審查** | 憲法法庭裁判及法規範憲法審查聲請書專屬排版引擎。 |
 | [`legal-opinion/`](legal-opinion/) | **意見書排版** | 函文式法律意見書、契約審核備忘錄格式化與排版引擎。 |
@@ -86,7 +86,7 @@
 
 ## ⚖️ 本套件 `twlegalrag-search` 與原作者 Skill 之功能差異
 
-本專案的檢索模組基於 [tw-legal-rag](https://github.com/aa0101181514/tw-legal-rag) 開發，針對實務研究流程增加了以下防禦規則與檢查機制：
+本專案的檢索模組基於 [tw-legal-rag](https://github.com/aa0101181514/tw-legal-rag) 開發，並全面對齊其於 **2026-09-01 發布之 v2.3.0 版本**（新增 `ref`、`ref-search`、`law` 指令、長裁判分頁讀取與 `tlr.dr-legal.com.tw` 新端點）。針對實務研究與書狀起草流程，本套件增加了以下防禦規則與架構設計：
 
 1. **查詢詞結構化與口語簡寫處理**：
    - 強制採用「法律構成要件關鍵字 ＋ 法律效果關鍵字」（如 `競業禁止 違約金 過高`），限制查詢詞任意擴展（如 終止≠解除、無效≠撤銷）。
@@ -94,9 +94,10 @@
    - 支援最高法院大法庭（`台上大`、`台抗大`）與最高行政法院（`上大`、`抗大`）分案字號。
 2. **強制正反雙向查證**：
    - 檢索正面支持案例時，同步加入反向關鍵字（如 `駁回`、`敗訴`）檢索對造抗辯與不利見解，避免研究結論落入盲點。
-3. **裁判 CLI ＋ 行政函釋 MCP 雙軌分流**：
-   - 司法裁判與勞動裁決由本地 CLI 處理；78 個中央部會之行政令函與規則由遠端 MCP 處理。
-   - 引用函釋時主動查驗效力狀態，排除已廢止或停止適用之令函。
+3. **因應 v2.3.0 之雙模式分流與書狀統一 CLI 管線**：
+   - **【模式 A】起草訴訟書狀／法律意見書**：全流程統一收斂至本地 CLI 管線（裁判 `twlegalrag pack` ＋ 函釋 `twlegalrag ref --full` ＋ 法條 `twlegalrag law` ＋ 防偽驗收 `scripts/check.py`），消除在 Shell 與 MCP 協議間切換的狀態混亂與連線中斷風險，全流程落實本地檔案留痕。
+   - **【模式 B】對話即時法律研究**：採輕量雙軌相容（環境有 MCP 時調用 Tool Call 即問即答免暫存檔，無 MCP 則由 CLI 無縫接管）。
+   - **行政函釋效力查驗與現行法條查核**：支援 `twlegalrag ref` 狀態機查驗（`status: active_verified`）與 `twlegalrag law` 現行條文查核，徹底杜絕引用已廢止令函或法條背誦幻覺。
 4. **法源類型隔離與審級過濾**：
    - 明確區分憲判字/釋字、法院裁判、行政函釋與勞動裁決，禁止將函釋或勞動裁決標註為法院判決。
    - 依法院審級排序，並排除經上級審廢棄之無效裁判。
@@ -143,16 +144,15 @@
 
 ### 2. 核心檢索工具安裝：`tw-legal-rag`（重要必備）
 
-本套件的官方裁判與函釋檢索模組（`twlegalrag-search`）建立於開源專案 **[tw-legal-rag (法律偵探 @aa0101181514)](https://github.com/aa0101181514/tw-legal-rag)** 之上。
+本套件的官方裁判、行政函釋與法條檢索模組（`twlegalrag-search`）建立於開源專案 **[tw-legal-rag (法律偵探 @aa0101181514)](https://github.com/aa0101181514/tw-legal-rag)** 之上。
 
-在啟用 `legal-research` 或 `twlegalrag-search` 技能前，**必須先依照該專案說明在您的本機系統中完成安裝與設定**：
+因應 `tw-legal-rag` 於 **2026-09-01 發布之 v2.3.0 版更新**（新增 `ref`、`ref-search`、`law` CLI 指令與長判決分頁支援），在啟用 `legal-research` 或 `twlegalrag-search` 技能前，請確認本機已安裝 `twlegalrag`（建議 v2.3.0 以上版本）：
 
 ```bash
-# 請參考 tw-legal-rag 官方專案指引進行安裝與環境設定
-# 專案網址：https://github.com/aa0101181514/tw-legal-rag
+pip install twlegalrag
 ```
 
-安裝完成後，確認在終端機執行 `twlegalrag --help` 正常輸出，AI 代理即可在研究過程中自主調用裁判檢索。
+安裝完成後，確認在終端機執行 `twlegalrag --help` 正常輸出，AI 代理即可在研究與寫狀過程中自主調用裁判檢索（`search`/`pack`）、函釋查驗（`ref-search`/`ref`）與現行法條核對（`law`）。
 
 ### 3. 本專案技能安裝說明
 
@@ -326,20 +326,25 @@ python draft-pleading/scripts/build_pleading.py "草稿路徑.md"
 python pdf-watermark-remover/scripts/remove_watermarks.py -i "原審卷宗.pdf" -o "乾淨卷宗.pdf"
 ```
 
-### 7. 台灣裁判語義檢索與驗證
+### 7. 台灣法源檢索、函釋查驗與防偽驗收
 ```text
-請幫我查詢最高法院關於違約金過高酌減之實務見解，並進行正反雙向查證。
+請幫我查詢最高法院關於違約金過高酌減之實務見解，並確認民法第252條現行條文與財政部相關印花稅函釋。
 ```
 或直接使用 CLI 與引用檢查腳本：
 ```bash
-# 1. 檢索裁判
+# 1. 檢索與打包裁判理由
 twlegalrag search "違約金 過高 酌減" -n 5
+twlegalrag pack "違約金 過高 酌減" -o bundle.json -n 6
 
-# 2. 打包判決封包 JSON
-twlegalrag pack "違約金 過高 酌減" -o bundle.json -n 10
+# 2. 檢索行政函釋並調閱全文與效力狀態
+twlegalrag ref-search "建物管理維護契約 印花稅" --authority "財政部"
+twlegalrag ref "台財稅第881945861號" --full
 
-# 3. 引用正確性驗證
-python twlegalrag-search/scripts/check.py bundle.json answer.txt
+# 3. 查核現行法條原文與最後修正日
+twlegalrag law 民法 252
+
+# 4. 引用正確性與防偽確定性驗收（Exit code 0）
+python twlegalrag-search/scripts/check.py bundle.json pleading_draft.txt
 ```
 
 ---
