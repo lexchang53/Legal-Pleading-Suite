@@ -7,25 +7,25 @@
 !docx-to-odt/
 !outline-docx/
 !legal-architecture/
-# (以此類推，每開發一個新技能就加一行在下面)
-
-# 3. 也要允許這份 .gitignore 檔案本身與 SKILL.md 等根目錄檔案
-!.gitignore
-!*.md
-# ư .agents ؿ
-*/.agents/
-
 !legal-opinion/
-
-!audio-transcriber/
-
-!zhconvert/
-
 !draft-pleading-const/
-**/test-prompts.json
-
 !legal-research/
 !twlegalrag-search/
 !pdf-watermark-remover/
 !contract-reviewer/
 !examples/
+
+# 3. 允許根目錄文檔
+!.gitignore
+!*.md
+!LICENSE*
+
+# 4. 排除特定內部目錄
+*/.agents/
+
+# 5. 全域排除暫存檔與敏感金鑰
+**/__pycache__/
+*.py[cod]
+**/.env
+**/.env.*
+**/test-prompts.json
