@@ -1,20 +1,17 @@
 ---
 name: docx-to-odt
-description: "DOCX 轉 ODT 與排版後處理技能。當使用者要求將 DOCX 轉換為 ODT、將書狀/Markdown直接轉為 ODT（此時需配合 draft-pleading 串接）、使用 LibreOffice/Writer 進行格式修正、關閉中文標點符號懸尾 (hanging punctuation)、將行編號改為外側 (outside)、或是對法律書狀與正式文件做後處理時，務必觸發此技能。"
+description: "DOCX 與 ODT 雙向保真轉換與排版後處理技能。支援：(1) DOCX 轉 ODT 並進行 LibreOffice/Writer 排版後處理（關閉中文標點懸尾、行編號改為外側、鎖定100%檢視比例）；(2) ODT 轉 DOCX 排版保真重構（消除 LibreOffice 內建匯出濾鏡之大綱縮排歸零、行高變形、頁數坍塌與標點懸尾缺陷，產出供客戶編輯之標準 Word 檔）。"
 ---
 
 # docx-to-odt
 
 ## 💎 核心定位與價值
 
-本技能專門處理 LibreOffice / Writer 相容性修正與最後一哩路的排版優化。
-上游技能（如 `draft-pleading`）負責產出結構正確的 DOCX；本技能則接手處理：
+本技能專門處理 LibreOffice Writer 與 Microsoft Word 之間的雙向相容性修正與最後一哩路的排版保真：
 
-1. **轉換流程**：DOCX -> staging ODT -> LibreOffice 內部 Python macro -> ODT
-2. **懸尾關閉**：徹底關閉中文標點符號懸尾
-3. **行編號修正**：將行編號改成外側（outside）
-4. **格式穩定**：輸出可在 LibreOffice Writer 中穩定編修的 ODT
-5. **檢視與縮放比例鎖定**：鎖定為「最大化視窗、單頁置中、100% 原始大小比例」，避免 LibreOffice 開檔時因自適應寬度而拉伸至 228% 滿版。
+1. **正向轉換（DOCX → ODT）**：DOCX -> staging ODT -> LibreOffice 內部 Python macro -> 關閉懸尾、外側行編號、鎖定 100% 檢視比例。
+2. **反向保真重構（ODT → DOCX）**：徹底解決 LibreOffice 內建「另存為 DOCX」時強制覆寫 `<w:ind w:start="0" w:hanging="0"/>` 導致大綱縮排歸零、行高膨脹（41pt vs 26pt）與頁數坍塌的根本缺陷，保真還原 Word 原生多層次大綱與版面。
+3. **格式穩定**：讓使用者既能在習慣的 LibreOffice Writer 中進行編修（保存為 ODT），又能在需要時一鍵產出格式完美、供客戶增刪修改的標準 Word (.docx) 文件。
 
 ### 🌟 隆重推薦：Tab 鍵智慧升降級巨集！
 
@@ -44,6 +41,7 @@ description: "DOCX 轉 ODT 與排版後處理技能。當使用者要求將 DOCX
 當使用者出現以下需求時，應呼叫本 skill：
 
 - 把 DOCX 轉成 ODT
+- **把 ODT 轉成 DOCX（保真轉換）**：當使用者在 LibreOffice Writer 編輯完 ODT 文件後，需要轉換為標準 Word (.docx) 交付客戶增刪修改，且必須確保大綱縮排不歸零、版面頁數不膨脹時。
 - **自動化 Markdown 至 ODT 工作流**：當使用者要求將 Markdown 直接轉成 ODT，或是使用 `draft-pleading` 產生 Markdown 後要求轉為 ODT 時，**必須主動串接**：先呼叫 `draft-pleading` 將 Markdown 轉為 DOCX，結束後**自動接續呼叫本 skill** 將結果轉為 ODT，切勿要求使用者分兩次下指令。
 - 用 LibreOffice / Writer 開啟後修正格式
 - 關閉標點符號懸尾 / hanging punctuation
@@ -70,16 +68,37 @@ description: "DOCX 轉 ODT 與排版後處理技能。當使用者要求將 DOCX
 
 ## 執行方式
 
-### Step 1：確認輸入路徑
+### 模式 A：正向轉換（DOCX → ODT）
 
+當上游產出 DOCX，或使用者需要產生能在 LibreOffice Writer 穩定編輯的 ODT 時：
+
+#### Step 1：確認輸入路徑
 - 輸入：`<path/to/document.docx>`
 - 輸出：`<path/to/document.odt>`（預設同名同目錄）
 
-### Step 2：執行啟動器腳本
-
+#### Step 2：執行啟動器腳本
 ```powershell
 python "scripts/convert_docx_to_odt.py" "<input.docx>" --output "<output.odt>"
 ```
+
+### 模式 B：反向保真重構（ODT → DOCX）
+
+當使用者在 LibreOffice Writer 編輯完成 ODT，需要提供標準 Word (.docx) 交付客戶增刪修改時使用。
+此腳本透過精確的 DOM 語義重構，完全繞過 LibreOffice 匯出濾鏡的破壞性覆寫：
+
+#### 執行指令：
+```powershell
+python "scripts/convert_odt_to_docx.py" "<input.odt>" [--output "<output.docx>"] [--type auto|opinion|pleading]
+```
+- `--output`：指定輸出 DOCX 路徑（預設同目錄同名 `.docx`）。
+- `--type`：文件類型，`auto`（預設，自動偵測意見書或書狀）、`opinion`（法律意見書/函文，套用 `opinion-tmpl.docx`）、`pleading`（訴訟書狀，套用 `pleading-tmpl.docx`）。
+- `--compress-empty-lines`：可選，是否壓縮連續空白行（預設保留使用者在 Writer 中調整的原版空行間隔）。
+
+#### 核心技術保證：
+1. **大綱縮排絕對保真**：支援平坦與嵌套式 `<text:list>` 雙模態解析，徹底清除 LibreOffice 匯出時產生的 `<w:ind w:start="0" w:hanging="0"/>` 歸零覆寫，還原 Word 原生 abstractNum / 樣式定義。
+2. **行高與字數不膨脹**：固定行高 26pt（520 twips），標題行距緊湊，確保與 ODT 頁數/行數 100% 一致。
+3. **中文標點懸尾嚴格關閉**：強制注入 `w:kinsoku=0` 與 `w:overflowPunct=0`，折行行為與 Writer 完全相同。
+4. **每頁外側行編號**：完整保留法律公文與書狀之外緣行編號設定。
 
 ### 💡 額外工具：修復與升級既有的 ODT 檔案（免重新轉檔）
 
@@ -184,12 +203,16 @@ python "scripts/convert_docx_to_odt.py" "<input.docx>" --output "<output.odt>"
 ## 與其他 skill 的關係
 
 ```text
-Markdown --> draft-pleading --> DOCX --> docx-to-odt --> ODT
+[撰寫/產出階段]
+Markdown / 素材 ──> legal-opinion / draft-pleading ──> DOCX ──> docx-to-odt ──> ODT (供使用者在 Writer 穩定編輯)
+                                                                                  │
+[交付/協作階段]                                                                   │
+Word (.docx) (供客戶增刪修改，排版零誤差) <── convert_odt_to_docx.py <───────────┘
 ```
 
-- `draft-pleading`：產出 DOCX (含排版與大綱控制)
-- `docx-to-odt`：LibreOffice / Writer 後處理並輸出 ODT
-- **自動串接**：當使用者指令最終目標為 ODT 且輸入為 Markdown 時，應先交由前置排版技能將 Markdown 轉為 DOCX，再自動接續執行本技能。
+- `legal-opinion` / `draft-pleading`：依法律格式規範產出標準 DOCX。
+- `docx-to-odt`：將 DOCX 轉為 ODT，完成懸尾關閉、外側行編號、100% 比例鎖定，並支援 Tab 原生升降級。
+- `convert_odt_to_docx.py`：反向保真重構引擎。在使用者於 LibreOffice Writer 編輯儲存為 ODT 後，精準轉回標準 DOCX 交付客戶，徹底消除縮排歸零與頁數崩塌。
 
 ---
 
@@ -197,9 +220,10 @@ Markdown --> draft-pleading --> DOCX --> docx-to-odt --> ODT
 
 本 skill 的核心檔案如下：
 
-- `scripts/convert_docx_to_odt.py`
-- `scripts/fix_existing_odt.py`
-- `references/libreoffice-notes.md`
+- `scripts/convert_docx_to_odt.py`：DOCX 轉 ODT 啟動器與前處理
+- `scripts/convert_odt_to_docx.py`：ODT 轉 DOCX 排版保真重構引擎
+- `scripts/fix_existing_odt.py`：舊版 ODT 結構修復與升級工具
+- `references/libreoffice-notes.md`：LibreOffice 相容性與排版技術筆記
 
 ---
 
