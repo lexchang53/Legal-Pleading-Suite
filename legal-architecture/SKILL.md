@@ -176,7 +176,7 @@ Place legend BELOW all diagram content, at least 20px below the lowest element. 
 - 需預留足夠高度，隨字串行數動態延展 Component box 與 Group box 的 `height`。
 
 ### Step 3: 寫入 HTML 檔案並交付
-將完整包裝好的字串使用 `write_to_file` 等工具，直接儲存為 `.html` 檔案到使用者的工作目錄（Workspace），隨後提供檔案路徑與開啟建議給使用者即可，不需將原始碼印於對話視窗。
+將完整包裝好的字串直接寫入為 `.html` 檔案，存到使用者的工作目錄（Workspace），隨後提供檔案路徑與開啟建議給使用者即可，不需將原始碼印於對話視窗。
 
 ## Output Format
 

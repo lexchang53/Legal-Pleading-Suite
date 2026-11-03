@@ -38,7 +38,7 @@ description: 移除法院電子卷證（包含下載的電子卷證與閱卷室�
     pip install pymupdf
     ```
 *   **第二步：呼叫處理腳本**
-    找出本技能安裝的實際目錄路徑，利用 `run_command` 執行以下指令：
+    找出本技能安裝的實際目錄路徑，用 shell／終端機執行以下指令：
 
     ```bash
     python "[pdf-watermark-remover 技能目錄的絕對路徑]/scripts/remove_watermarks.py" --input "[輸入檔案絕對路徑]" --output "[輸出檔案絕對路徑]"
