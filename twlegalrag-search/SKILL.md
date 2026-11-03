@@ -1,11 +1,11 @@
 ---
 name: twlegalrag-search
-description: 用於台灣法院裁判、司法院釋字、憲判字、勞動裁決、78個中央機關行政函釋/行政規則，以及現行法條之語義檢索、字號調卷、效力狀態查驗、引用封包（bundle）整理與引用正確性檢查。當使用者需要查找台灣各級法院判決、實務見解、主管機關令函、行政規則、勞動裁決、查核現行法條原文，或為起訴狀、答辯狀、準備書狀、法律意見書蒐集案例法源依據，或檢查 AI 生成內容中的法源引用是否正確時，應使用此技能。當使用者提及 twlegalrag、裁判檢索、查詢實務見解、函釋檢索、令函查詢、法條查詢、行政規則、引用檢查、查證裁判，或提及 bundle、citation_id 等相關術語時，亦應優先觸發。
+description: 用於台灣法院裁判、司法院釋字、憲判字、勞動裁決、107 個機關行政函釋/行政規則，以及現行法條之語義檢索、字號調卷、效力狀態查驗、引用封包（bundle）整理與引用正確性檢查。當使用者需要查找台灣各級法院判決、實務見解、主管機關令函、行政規則、勞動裁決、查核現行法條原文，或為起訴狀、答辯狀、準備書狀、法律意見書蒐集案例法源依據，或檢查 AI 生成內容中的法源引用是否正確時，應使用此技能。當使用者提及 twlegalrag、裁判檢索、查詢實務見解、函釋檢索、令函查詢、法條查詢、行政規則、引用檢查、查證裁判，或提及 bundle、citation_id 等相關術語時，亦應優先觸發。
 ---
 
 # twlegalrag-search
 
-本技能提供台灣法律法源的完整檢索、效力查驗與確定性引用防護體系，支援 **2,250 萬筆司法裁判、憲法裁判、勞動裁決、78 個中央機關行政函釋／規則，以及全國法規資料庫現行法條**。
+本技能提供台灣法律法源的完整檢索、效力查驗與確定性引用防護體系，支援 **約 2,276 萬筆（截至 2026-10-30）司法裁判、憲法裁判、勞動裁決、107 個機關行政函釋／規則，以及全國法規資料庫現行法條**。
 
 當任務需要建立在真實、可追溯、可驗證的台灣法律法源上，而不是憑記憶或未經驗證的法律敘述時，必須使用本技能。
 
@@ -18,7 +18,29 @@ description: 用於台灣法院裁判、司法院釋字、憲判字、勞動裁�
 | 執行模式 | 適用場景 | 管線策略 | 核心工具 / 指令 | 引用標記與驗收機制 |
 |---|---|---|---|---|
 | **【模式 A】法律文書撰寫模式** | 起草訴訟書狀、法律意見書、爭點整理表等正式法律文本 | **★ 統一 CLI 管線**<br>（消除協議切換混亂，全流程本地留痕） | • 裁判：`twlegalrag pack`<br>• 函釋：`twlegalrag ref --full`<br>• 法條：`twlegalrag law`<br>• 驗收：`scripts/check.py` | • 裁判標記 `[J1]`、`[J2]`...；以 `allowed_citations` ＋ `scripts/check.py` 退出碼驗收。<br>• 函釋標記 `[R1]` 或全稱字號；核驗 `status` ＋ 主旨說明全文。 |
-| **【模式 B】即時法律研究與探索模式** | 日常對話中探討爭點、快速驗證法條或函釋效力（無需產出正式檔案） | **★ 輕量雙軌相容**<br>（MCP 優先即問即答；無 MCP 則由 CLI 無縫接管） | • MCP：`get_legal_reference`、`get_law_article`、`search_judgments`<br>• CLI：`twlegalrag ref`、`twlegalrag law`、`twlegalrag search` | • 即時呈現法源要點與效力狀態。<br>• 不產生本地暫存檔。 |
+| **【模式 B】即時法律研究與探索模式** | 日常對話中探討爭點、快速驗證法條或函釋效力（無需產出正式檔案） | **★ 輕量雙軌相容**<br>（有 MCP 用 MCP；否則用 CLI。CLI 同樣需要憑證） | • MCP：`get_legal_reference`、`get_law_article`、`search_judgments`<br>• CLI：`twlegalrag ref`、`twlegalrag law`、`twlegalrag search` | • 即時呈現法源要點與效力狀態。<br>• 不產生本地暫存檔。 |
+
+> 模式 A 一律走 CLI：只有 `twlegalrag pack -o bundle.json` 產出的 bundle 能接 `scripts/check.py` 驗收，MCP 的結果無法驗收。
+
+---
+
+## 認證設定
+
+TLR 服務自 **2026-10-30** 起需要登入，未帶憑證的查詢一律回 **HTTP 401 `authentication_required`**。`twlegalrag health` 仍是公開端點，**health 通過不代表能查詢**。
+
+- **CLI 憑證來源**（依優先順序）：
+  1. 環境變數 `TWLEGALRAG_TLR_API_KEY`
+  2. `~/.twlegalrag/config.toml` 的 `[tlr] api_key`
+- **建議採連線金鑰**：使用者自行到 <https://dr-legal.com.tw/mcp/keys> 登入法律偵探帳號產生（每台電腦各一把），貼入 `config.toml`：
+  ```toml
+  [tlr]
+  # 帳號：<登入帳號>｜金鑰名稱：<名稱>｜建立：<日期>
+  # base_url = "https://tlr.dr-legal.com.tw"
+  api_key = "tlr_..."
+  ```
+- **臨時備案**：官方 repo 的 `python docs/tlr_oauth_cli.py login --device` 以裝置授權取得 access token，設為 `TWLEGALRAG_TLR_API_KEY`；約 1 小時過期。
+- **金鑰屬機密**：不得寫入技能資料夾、不得 commit、不得在對話中回顯；需要診斷時只顯示開頭 4 字與長度。
+- **MCP**：在 Claude Connectors 加入 `https://tlr.dr-legal.com.tw/mcp`，以法律偵探帳號登入授權；連續 30 天未使用需重新登入。
 
 ---
 
@@ -29,8 +51,8 @@ description: 用於台灣法院裁判、司法院釋字、憲判字、勞動裁�
 所有 CLI 指令直接使用 Python 執行，確保終端編碼為 UTF-8：
 
 ```bash
-# 服務健康度確認
-twlegalrag health
+# 憑證與服務可用性確認（實際查詢；health 只用於診斷服務是否在線）
+twlegalrag law 民法 184
 
 # 1. 司法裁判：探索預覽與封包打包
 twlegalrag search "<查詢詞>" -n 5 --read
@@ -47,7 +69,12 @@ twlegalrag law "<法規名稱或常用縮寫>" "<條號>"
 python scripts/check.py <bundle.json> <answer.txt>
 ```
 
-- **環境前置檢查**：確認執行環境可使用 `twlegalrag` 指令。若未安裝或無法執行，提示使用者安裝：`pip install twlegalrag`。
+- **環境前置檢查**：
+  1. 確認執行環境可使用 `twlegalrag` 指令（需 2.3.1 以上）。若未安裝或版本過舊，提示使用者執行：`pip install -U twlegalrag`。
+  2. 執行 `twlegalrag law 民法 184` 確認憑證有效：
+     - 回傳條文 → 繼續。
+     - HTTP 401 → **停止**，提示使用者依「認證設定」小節設定金鑰，不得繼續或繞道。
+  3. `twlegalrag health` 只作為「服務是否在線」的輔助診斷，不得用來判斷能否查詢。
 - **查詢筆數與升級策略**：
   - `twlegalrag search` 預設使用 `-n 5`，用於快速確認檢索方向與候選相關性。
   - `twlegalrag pack` 預設顯式帶入 `-n 6`，優先取得精簡之核心裁判集合。v2.1+ 自動處理長判決分頁（單篇上限 12,000 字），並包含 `hit_excerpt` 與 `fulltext_total_chars`。
@@ -68,6 +95,7 @@ python scripts/check.py <bundle.json> <answer.txt>
 - `search_legal_references(query=..., authority=..., source_kind=..., max_results=5)`：函釋語義探索。
 - `get_legal_reference(serial=..., authority=...)`：函釋全文調卷與 `status` 效力查驗。
 - `get_law_article(law_name=..., article_no=...)`：現行法條查詢。
+- `get_judgment_fulltext(...)`：裁判理由全文讀取；長判決以 `excerpt_offset` 分頁續讀（參數名稱以實際 MCP schema 為準）。
 
 ---
 
@@ -116,7 +144,7 @@ AI 在處理檢索結果時，**必須嚴格辨識法源性質，恪守對應之
 
 ```mermaid
 flowchart TD
-    A["1. 確認環境與 twlegalrag health"] --> B["2. twlegalrag search 預覽爭點候選 (CHECKPOINT 1)"]
+    A["1. 確認環境與憑證<br>twlegalrag law 民法 184"] --> B["2. twlegalrag search 預覽爭點候選 (CHECKPOINT 1)"]
     B --> C["3. twlegalrag pack -o bundle.json -n 6 打包全量理由"]
     C --> D{"4. 是否需引用函釋或法條？"}
     D -- 函釋 --> E["twlegalrag ref-search 搜字號<br>+ twlegalrag ref --full 查全文與效力"]
@@ -132,7 +160,7 @@ flowchart TD
     L --> I
 ```
 
-1. **環境與服務確認**：確認環境具備 `twlegalrag` 指令（若無提示 `pip install twlegalrag`），執行 `twlegalrag health`。
+1. **環境與憑證確認**：確認環境具備 `twlegalrag` 指令（若無提示 `pip install -U twlegalrag`），執行 `twlegalrag law 民法 184`；遇 HTTP 401 即停止，依「認證設定」處理。
 2. **預覽確認**：執行 `twlegalrag search "<查詢詞>" -n 5 --read` 預覽候選。
    > 🔴 **CHECKPOINT 1 — 方向與候選確認**：展示裁判字號、審級與案由。若同案號存在民事/刑事多文書，嚴格核對 `case_category`。
 3. **全量打包**：執行 `twlegalrag pack "<爭點問題>" -o bundle.json -n 6`。
@@ -188,7 +216,9 @@ flowchart TD
 | 觸發條件 | 一線修復 | 仍失敗兜底 |
 |---|---|---|
 | 裁判字號精確調卷查無結果 | 1. 檢查字號拼寫與合法格式（更審 `更一`、大法庭 `台上大`）。<br>2. 留意法定不公開案件（兒少、性侵）或新宣判之入庫時間差。 | 告知「查無不代表不存在，但因資料庫未收錄，不得臆測該案內容」，建議至司法院法學資料檢索系統確認，停止引用。 |
-| 環境無 MCP 連線 | 自動切換為 CLI 指令（`twlegalrag ref-search` / `ref --full` / `law`）。 | 保證 100% 本地可用，無需向使用者報錯中斷。 |
+| 環境無 MCP 連線 | 切換為 CLI 指令（`twlegalrag ref-search` / `ref --full` / `law`）。 | CLI 同樣需要憑證；遇 HTTP 401 時依下列「HTTP 401」列處理。 |
+| HTTP 401 `authentication_required` | 提示使用者依「認證設定」小節設定或更新連線金鑰，停止查詢。 | 🔴 嚴禁改用網頁爬蟲或其他未經授權的管道取得資料，嚴禁憑記憶補寫法源。 |
+| MCP 要求重新登入 | 請使用者在 Claude Connectors 重新授權。 | 重新授權前改走 CLI。 |
 | `law` 查無法規或條號 | 核對回傳之 `law_candidates` 候選法規清單，改用精確名稱重查。 | 告知查無該條文，提醒確認是否為已廢止法規或條號異動。 |
 | `ref` 查無指定函釋字號 | 核對字號全半形、臺/台、「字第」/「第」等變體重查。 | 告知查無此字號，嚴禁宣稱該字號為捏造，停止引用該函釋。 |
 | `ref` 顯示 `status` 為 `repealed` / `ceased` | 檢視 `superseded_by` 尋找取代之新令函。 | 嚴禁作為現行依據引用；若為沿革說明，必須明確標記「已廢止／停止適用」。 |
@@ -203,10 +233,14 @@ flowchart TD
 - 🔴 **絕對禁止性質混淆**：嚴禁將行政函釋或勞動裁決稱為「法院判決」或「判例」。
 - 🔴 **絕對禁止引用已廢棄裁判或已廢止函釋**作為現行有效前例。
 - 🔴 **絕對禁止將 `hit_excerpt` 作為逐字引述依據**（必須以 `fulltext_excerpt` 或 `ref --full` 全文為準）。
+- 🔴 **僅能引用 bundle 中 `allowed_citations` 列出的裁判**：不在 `allowed_citations` 內的裁判，即使出現在檢索清單中，也不得作為法源引用。
+- 🔴 **字號存在不等於支持主張**：裁判出現在 bundle 中只證明它存在，不證明它支持使用者的立場；描述其見解前必須先讀 `fulltext_excerpt`。
+- 🔴 **必須遵守 bundle 的 `verification_instructions`**：該欄位屬於資料約定的一部分，與本技能規則同時適用。
+- 🔴 **查詢詞禁止含可識別資訊**：查詢綁定使用者帳號，服務端可能記錄查詢字串。查詢詞只寫法律爭點，不得包含當事人姓名、公司名、身分證號、地址等可識別資訊或機密事實。
 - 🔴 **絕對禁止跳過全文查核**：嚴禁僅憑 `ref-search` 摘要直接引用函釋，必須經 `ref --full` 或 `get_legal_reference` 調閱全文。
 - 🔴 **絕對禁止跳過書狀驗收門禁**：產出訴訟書狀或意見書時，未經 `scripts/check.py` 驗收（Exit code 0）嚴禁交付。
 - 🔴 **絕對禁止將現行法條直接當作行為時法**：遇跨越修法年份之案件，必須提醒使用者核對歷史沿革條文。
-- 🔴 **絕對禁止繞過依賴**：若 CLI 未安裝或服務不可用，嚴禁自行改用未經驗證之網頁爬蟲或 HTTP 請求替代。
+- 🔴 **絕對禁止繞過依賴**：若 CLI 未安裝或服務不可用，嚴禁自行改用未經驗證之網頁爬蟲或 HTTP 請求替代。例外：官方 repo 的 `docs/tlr_oauth_cli.py` 屬官方登入工具，可用於取得 token。
 
 ---
 
@@ -215,7 +249,7 @@ flowchart TD
 ### 範例 1：準備書狀起草（統一 CLI 管線）
 * **需求**：撰寫勞資爭議準備書狀，主張雇主未給付特休未休工資及加班費。
 * **流程**：
-  1. 確認 `twlegalrag` 可用，執行 `twlegalrag health` 確認服務。
+  1. 確認 `twlegalrag` 可用，以 `twlegalrag law 民法 184` 確認憑證有效。
   2. `twlegalrag search "特休未休工資 加班費" -n 5 --read`（CHECKPOINT 1 確認方向）。
   3. `twlegalrag pack "特休未休工資請求權與加班費計算" -o bundle.json -n 6`。
   4. `twlegalrag ref-search "特別休假 未休日數 工資發給" --authority "勞動部"` → 取得候選 `勞動條 2字第1080130382號令`。
