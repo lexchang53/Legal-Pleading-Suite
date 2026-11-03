@@ -19,7 +19,7 @@
 - [為什麼重構為解耦流水線？（架構演進考量）](#-為什麼重構為解耦流水線架構演進考量)
 - [適用情境](#-適用情境)
 - [核心模組一覽](#-核心模組一覽)
-- [本套件 `twlegalrag-search` 與原作者 Skill 之差異與優勢](#-本套件-twlegalrag-search-與原作者-skill-之差異與優勢)
+- [法源檢索依賴：twlegalrag-search（獨立 repo）](#-法源檢索依賴twlegalrag-search獨立-repo)
 - [私有知識庫擴充：Gemini Notebook、notebooklm-py 與 Obsidian](#-私有知識庫擴充gemini-notebooknotebooklm-py-與-obsidian)
 - [環境安裝與先備依賴](#-環境安裝與先備依賴)
 - [實戰工作流 (End-to-End Workflow)](#-實戰工作流-end-to-end-workflow)
@@ -74,7 +74,7 @@
 | 模組目錄 | 類型 | 說明 |
 |---|---|---|
 | [`legal-research/`](legal-research/) | **核心研究** | 法律問題研究專用引擎。以爭點為單位展開多輪攻防推演，語義觸發裁判檢索，將結論固化為 `strategy_memo.md`。 |
-| [`twlegalrag-search/`](twlegalrag-search/) | **法源檢索** | 臺灣法院裁判、78 部會行政函釋與現行法條之語義檢索、效力查驗與引用防偽工具（對齊 `tw-legal-rag` v2.3.0 雙模式架構）。 |
+| [`twlegalrag-search`](https://github.com/lexchang53/twlegalrag-search) | **法源檢索（外部依賴，必要）** | 臺灣法院裁判、107 個機關行政函釋與現行法條之語義檢索、效力查驗與引用防偽。**已獨立為單一 repo**，`legal-research` 以其為核心依賴，請另行安裝。 |
 | [`draft-pleading/`](draft-pleading/) | **書狀排版** | 訴訟書狀核心格式化引擎。讀取研究成果，依 CRAC 論證格式生成 Markdown 草稿，並以專屬引擎渲染為 Word 檔。 |
 | [`draft-pleading-const/`](draft-pleading-const/) | **憲法審查** | 憲法法庭裁判及法規範憲法審查聲請書專屬排版引擎。 |
 | [`legal-opinion/`](legal-opinion/) | **意見書排版** | 函文式法律意見書、契約審核備忘錄格式化與排版引擎。 |
@@ -84,25 +84,14 @@
 
 ---
 
-## ⚖️ 本套件 `twlegalrag-search` 與原作者 Skill 之功能差異
+## 🔎 法源檢索依賴：twlegalrag-search（獨立 repo）
 
-本專案的檢索模組基於 [tw-legal-rag](https://github.com/aa0101181514/tw-legal-rag) 開發，並全面對齊其於 **2026-09-01 發布之 v2.3.0 版本**（新增 `ref`、`ref-search`、`law` 指令、長裁判分頁讀取與 `tlr.dr-legal.com.tw` 新端點）。針對實務研究與書狀起草流程，本套件增加了以下防禦規則與架構設計：
+本套件的官方裁判、行政函釋與現行法條檢索，由 **[twlegalrag-search](https://github.com/lexchang53/twlegalrag-search)** 技能負責。該技能原本放在本套件內，2026-11 起獨立為單一 repo，不寫書狀的使用者也可以單獨安裝使用。
 
-1. **查詢詞結構化與口語簡寫處理**：
-   - 強制採用「法律構成要件關鍵字 ＋ 法律效果關鍵字」（如 `競業禁止 違約金 過高`），限制查詢詞任意擴展（如 終止≠解除、無效≠撤銷）。
-   - 使用者輸入「法院簡稱＋非標準案號」（如 `北院 112訴100`、`最高院 112台上100`）時，AI 會在查詢前自動補全為標準格式（如 `臺灣臺北地方法院 112年度訴字第100號`），避免系統無法辨識案號而退化為全文搜尋。
-   - 支援最高法院大法庭（`台上大`、`台抗大`）與最高行政法院（`上大`、`抗大`）分案字號。
-2. **強制正反雙向查證**：
-   - 檢索正面支持案例時，同步加入反向關鍵字（如 `駁回`、`敗訴`）檢索對造抗辯與不利見解，避免研究結論落入盲點。
-3. **因應 v2.3.0 之雙模式分流與書狀統一 CLI 管線**：
-   - **【模式 A】起草訴訟書狀／法律意見書**：全流程統一收斂至本地 CLI 管線（裁判 `twlegalrag pack` ＋ 函釋 `twlegalrag ref --full` ＋ 法條 `twlegalrag law` ＋ 防偽驗收 `scripts/check.py`），消除在 Shell 與 MCP 協議間切換的狀態混亂與連線中斷風險，全流程落實本地檔案留痕。
-   - **【模式 B】對話即時法律研究**：採輕量雙軌相容（環境有 MCP 時調用 Tool Call 即問即答免暫存檔，無 MCP 則由 CLI 無縫接管）。
-   - **行政函釋效力查驗與現行法條查核**：支援 `twlegalrag ref` 狀態機查驗（`status: active_verified`）與 `twlegalrag law` 現行條文查核，徹底杜絕引用已廢止令函或法條背誦幻覺。
-4. **法源類型隔離與審級過濾**：
-   - 明確區分憲判字/釋字、法院裁判、行政函釋與勞動裁決，禁止將函釋或勞動裁決標註為法院判決。
-   - 依法院審級排序，並排除經上級審廢棄之無效裁判。
-5. **搜尋結果預覽與同字號消歧義**：
-   - 在打包法源前，AI 會先展示搜尋摘要，並主動核對「跨分院同號案件」（如 `112上易100`）與「最高法院同字號民刑事案件」（如同為 `115台上176` 的民事與刑事判決），確認目標案件後再進行後續引用。
+- `legal-research` 以它為**核心依賴**（軌道一：官方實務檢索），未安裝時無法進行官方裁判與函釋檢索。
+- `draft-pleading` 在撰狀過程中臨時查證個別裁判字號時會選用它。
+
+它與開發者版 `tw-legal-rag` skill 的關係與功能對照、安裝方式，以及 **TLR 連線金鑰的申請步驟**，請見 [twlegalrag-search 的 README](https://github.com/lexchang53/twlegalrag-search#readme)。
 
 ---
 
@@ -142,17 +131,18 @@
 - Microsoft Word（或相容之文書處理軟體，如 LibreOffice Writer）
 - LibreOffice（若您需要轉檔為 ODT）
 
-### 2. 核心檢索工具安裝：`tw-legal-rag`（重要必備）
+### 2. 法源檢索技能安裝：`twlegalrag-search`（重要必備）
 
-本套件的官方裁判、行政函釋與法條檢索模組（`twlegalrag-search`）建立於開源專案 **[tw-legal-rag (法律偵探 @aa0101181514)](https://github.com/aa0101181514/tw-legal-rag)** 之上。
+本套件的官方裁判、行政函釋與法條檢索由獨立技能 **[twlegalrag-search](https://github.com/lexchang53/twlegalrag-search)** 負責，其檢索引擎為開源專案 **[tw-legal-rag (法律偵探 @aa0101181514)](https://github.com/aa0101181514/tw-legal-rag)** 的 `twlegalrag` CLI。
 
-因應 `tw-legal-rag` 於 **2026-09-01 發布之 v2.3.0 版更新**（新增 `ref`、`ref-search`、`law` CLI 指令與長判決分頁支援），在啟用 `legal-research` 或 `twlegalrag-search` 技能前，請確認本機已安裝 `twlegalrag`（建議 v2.3.0 以上版本）：
+在啟用 `legal-research` 之前，請完成以下三件事（詳細步驟見 [twlegalrag-search 的 README](https://github.com/lexchang53/twlegalrag-search#readme)）：
 
-```bash
-pip install twlegalrag
-```
-
-安裝完成後，確認在終端機執行 `twlegalrag --help` 正常輸出，AI 代理即可在研究與寫狀過程中自主調用裁判檢索（`search`/`pack`）、函釋查驗（`ref-search`/`ref`）與現行法條核對（`law`）。
+1. **安裝 CLI**（需 2.3.1 以上）：
+   ```bash
+   pip install -U twlegalrag
+   ```
+2. **安裝 `twlegalrag-search` 技能**：將該 repo 放進 AI 工具的技能區。
+3. **申請 TLR 連線金鑰**：TLR 服務自 **2026-10-30** 起需要登入，未設定憑證時查詢一律回 HTTP 401。請到 <https://dr-legal.com.tw/mcp/keys> 產生金鑰，寫入 `~/.twlegalrag/config.toml`，再以 `twlegalrag law 民法 184` 驗證。
 
 ### 3. 本專案技能安裝說明
 
@@ -160,10 +150,9 @@ pip install twlegalrag
 > **不要**將整個 `Legal-Pleading-Suite/` 母目錄直接放入 AI 工具的技能區（Skills folder）。
 > 多數 AI 工具只會偵測技能區中「直接可見」的技能目錄與其中的 `SKILL.md`，若您只是把整個解壓後的母目錄原封不動放進去，AI 工具通常**無法正確辨識**位於深層子目錄內的技能。
 
-本專案採 Monorepo 結構管理，真正應加入 AI 工具技能區的，是前述的 **8 個核心技能子目錄**：
+本專案採 Monorepo 結構管理，真正應加入 AI 工具技能區的，是前述的 **7 個核心技能子目錄**（`twlegalrag-search` 請依上一節另行安裝）：
 
 - `legal-research/`
-- `twlegalrag-search/`
 - `draft-pleading/`
 - `draft-pleading-const/`
 - `legal-opinion/`
@@ -173,7 +162,7 @@ pip install twlegalrag
 
 **正確安裝步驟：**
 1. 下載或 Clone 整個 `Legal-Pleading-Suite/`。
-2. 將上述 8 個子目錄個別移入或軟連結（Junction/Symlink）至您的 AI 工具技能區。
+2. 將上述 7 個子目錄個別移入或軟連結（Junction/Symlink）至您的 AI 工具技能區。
 3. 確認每個技能目錄底下都可直接看到 `SKILL.md`。
 
 ### 4. 非技能檔案應放哪裡？
@@ -344,7 +333,7 @@ twlegalrag ref "台財稅第881945861號" --full
 twlegalrag law 民法 252
 
 # 4. 引用正確性與防偽確定性驗收（Exit code 0）
-python twlegalrag-search/scripts/check.py bundle.json pleading_draft.txt
+python <twlegalrag-search 技能資料夾>/scripts/check.py bundle.json pleading_draft.txt
 ```
 
 ---
@@ -352,7 +341,7 @@ python twlegalrag-search/scripts/check.py bundle.json pleading_draft.txt
 ## 📄 開源授權與致謝
 
 - 本專案主體採用 **[CC BY-NC-SA 4.0](LICENSE.md)** 授權。
-- `twlegalrag-search/` 核心檢索引擎依賴於 [法律偵探 (@aa0101181514)](https://github.com/aa0101181514) 開發之開源工具 [tw-legal-rag](https://github.com/aa0101181514/tw-legal-rag)，特此致謝。
+- 法源檢索技能 [`twlegalrag-search`](https://github.com/lexchang53/twlegalrag-search)（獨立 repo）的核心檢索引擎依賴於 [法律偵探 (@aa0101181514)](https://github.com/aa0101181514) 開發之開源工具 [tw-legal-rag](https://github.com/aa0101181514/tw-legal-rag)，特此致謝。
 - 其他由本專案自行開發之模組，請以儲存庫內授權文件與模組說明為準。
 
 ---
