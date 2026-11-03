@@ -29,3 +29,4 @@
 **/.env
 **/.env.*
 **/test-prompts.json
+**/.DS_Store
