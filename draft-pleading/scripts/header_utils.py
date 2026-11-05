@@ -38,6 +38,43 @@ def _wants_top_date():
     return False
 
 
+def _default_filing_date():
+    """預設書狀日期：撰寫當日之後第 2 日，遇週六、週日順延至星期一。"""
+    d = datetime.date.today() + datetime.timedelta(days=2)
+    while d.weekday() >= 5:
+        d += datetime.timedelta(days=1)
+    return f"{d.year - 1911}年{d.month}月{d.day}日"
+
+
+def _strip_era(text):
+    return re.sub(r'^\s*(中華民國|民國)\s*', '', text or '').strip()
+
+
+def _resolve_top_date(md_headers):
+    """
+    狀首日期一律與狀尾日期相同：
+      1. 有狀尾日期 → 採狀尾日期（去除紀元）；草稿狀首日期不同時提出警告
+      2. 無狀尾日期 → 採草稿狀首日期（去除紀元）
+      3. 皆無 → 預設日期
+    """
+    closing = _strip_era(md_headers.get('closing_date'))
+    top = _strip_era(md_headers.get('date'))
+    if closing:
+        if top and top != closing:
+            print(f"[WARN] 狀首日期「{top}」與狀尾日期「{closing}」不同，已改用狀尾日期")
+        return closing
+    return top or _default_filing_date()
+
+
+def _write_top_date(doc, md_headers):
+    """在書狀名稱下一行寫入靠右的狀首日期（不加紀元）。"""
+    p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_預設'))
+    normalize_header_paragraph(p)
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    run = p.add_run(_resolve_top_date(md_headers))
+    run.font.size = Pt(12)
+
+
 END_PATTERN = re.compile(r'事[：:]\s*$')
 DATE_PATTERN = re.compile(r'(?:民國)?\s*(\d{2,3})\s*年\s*(?:[\d\u3000\s]+月)?\s*(?:[\d\u3000\s]+日)?')
 
@@ -176,18 +213,22 @@ def write_identity_paragraph(doc, style_name, text):
         if not parts:
             return names_str
             
+        def _width(s):
+            # 半形字元（英數、空白）約為中文字寬之一半
+            return sum(0.5 if ord(c) < 0x2E80 else 1 for c in s)
+
         lines = []
         current_names = []
         # 首行長度包含稱謂及間距估算
-        current_len = len(role_str) + 2 
-        
+        current_len = len(role_str) + 2
+
         for n in parts:
-            add_len = len(n) + (1 if current_names else 0)
+            add_len = _width(n) + (1 if current_names else 0)
             if current_names and (current_len + add_len > max_chars):
                 lines.append('、'.join(current_names))
                 current_names = [n]
                 # 換行後的第一層縮排（\t）約相當於 4 個中文字寬
-                current_len = 4 + len(n)
+                current_len = 4 + _width(n)
             else:
                 current_names.append(n)
                 current_len += add_len
@@ -368,10 +409,16 @@ def extract_md_header_info(md_blocks):
     info = {
         'title': None,
         'date': None,
+        'closing_date': None,  # 狀尾日期，供狀首日期比照
         'value_of_claim': None,
         'for_matter': None,
         'header_lines': [],   # 完整收集稿首區間所有行
     }
+
+    for b in md_blocks:
+        if b.style == '書狀_狀尾日期':
+            info['closing_date'] = b.text.strip()
+            break
 
     in_header = True
 
@@ -482,24 +529,14 @@ def merge_and_write_header(doc, header_data=None, md_headers=None,
                 p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_標題'))
                 normalize_header_paragraph(p)
                 p.add_run(t)
+                # 狀首日期緊接書狀名稱，草稿漏寫時亦自動補上
+                if _wants_top_date():
+                    _write_top_date(doc, md_headers)
                 continue
 
-            # 日期行（排除案號，且長度、位置合理）
+            # 原有日期行已於書狀名稱後統一寫入（排除案號，且長度、位置合理）
             is_date_line = (style_name == '書狀_狀首日期' or DATE_PATTERN.search(t)) and '案號' not in t and i < 5 and len(t) < 20
             if is_date_line:
-                if not _wants_top_date():
-                    continue
-
-                # 重新計算預設日期：今天 + 2 日（依規則：狀首日期「絕對不要加」民國）
-                target_date = datetime.date.today() + datetime.timedelta(days=2)
-                roc_year = target_date.year - 1911
-                new_date_str = f"{roc_year}年{target_date.month}月{target_date.day}日"
-                
-                p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_預設'))
-                normalize_header_paragraph(p)
-                p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                run = p.add_run(new_date_str)
-                run.font.size = Pt(12)
                 continue
 
             # 為就...事：
@@ -539,29 +576,13 @@ def merge_and_write_header(doc, header_data=None, md_headers=None,
                     p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_標題'))
                     normalize_header_paragraph(p)
                     p.add_run(t)
+                    # 狀首日期緊接書狀名稱，草稿漏寫時亦自動補上
+                    if _wants_top_date():
+                        _write_top_date(doc, md_headers)
                     continue
 
+                # 原有日期行已於書狀名稱後統一寫入
                 if style_name == '書狀_狀首日期' or DATE_PATTERN.match(t):
-                    if not _wants_top_date():
-                        continue
-
-                    target_date = datetime.date.today() + datetime.timedelta(days=2)
-                    roc_year = target_date.year - 1911
-                    
-                    # 依規則：狀首日期「絕對不要加」民國
-                    m = DATE_PATTERN.search(text)
-                    if m:
-                        parts = re.split(r'年', text)
-                        suffix = parts[1] if len(parts) > 1 else f"{target_date.month}月{target_date.day}日"
-                        new_date_str = f"{roc_year}年{suffix.strip()}"
-                    else:
-                        new_date_str = f"{roc_year}年{target_date.month}月{target_date.day}日"
-                        
-                    p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_預設'))
-                    normalize_header_paragraph(p)
-                    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                    run = p.add_run(new_date_str)
-                    run.font.size = Pt(12)
                     continue
 
                 # 為就...事：
@@ -591,11 +612,7 @@ def merge_and_write_header(doc, header_data=None, md_headers=None,
             p.add_run(title)
 
             if _wants_top_date():
-                p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_預設'))
-                normalize_header_paragraph(p)
-                p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                run = p.add_run(md_headers.get('date') or f"{datetime.date.today().year - 1911}年　月　日")
-                run.font.size = Pt(12)
+                _write_top_date(doc, md_headers)
 
             if md_headers.get('value_of_claim'):
                 write_value_of_claim_paragraph(doc, md_headers['value_of_claim'])
@@ -622,11 +639,7 @@ def merge_and_write_header(doc, header_data=None, md_headers=None,
             p.add_run(title)
 
             if _wants_top_date():
-                p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_預設'))
-                normalize_header_paragraph(p)
-                p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-                run = p.add_run(f"{datetime.date.today().year - 1911}年　月　日")
-                run.font.size = Pt(12)
+                _write_top_date(doc, md_headers)
 
             for line in ['案　　號：', '股　　別：', '上 訴 人：', '法定代理人：', '訴訟代理人：', '被上訴人：']:
                 p = doc.add_paragraph(style=_get_safe_style(doc, '書狀_預設'))
