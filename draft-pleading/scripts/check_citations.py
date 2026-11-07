@@ -100,6 +100,11 @@ _QA_FORMAT = re.compile(r'^(?:問|答|證人|A|Q)[：:]', re.MULTILINE)
 # 核心掃描邏輯
 # ─────────────────────────────────────────────
 
+def _is_list_line(stripped: str) -> bool:
+    """證據清單行（如：甲證1：〇〇文件、甲附件1：〇〇判決）。"""
+    return bool(re.match(r'^（?(?:[甲乙丙丁上被原附]證|[甲乙丙丁上被原]?附件)\d*[：:]', stripped))
+
+
 def _surrounding_text(lines: list[str], lineno: int, window: int = 3) -> str:
     """取得指定行前後 window 行的合併文字，用於上下文判斷。"""
     start = max(0, lineno - window)
@@ -157,7 +162,7 @@ def check_draft(md_path: str) -> tuple[list[dict], list[dict]]:
             has_closing = bool(_EVIDENCE_CLOSING.search(after[:30]))
 
             # 判斷是否為「純清單行」（如：甲證1：〇〇文件）
-            is_list_line = bool(re.match(r'^（?(?:[甲乙丙丁上被原附]證|附件)\d*[：:]', stripped))
+            is_list_line = _is_list_line(stripped)
 
             if not is_list_line and not (has_desc_before and has_closing):
                 if not has_desc_before:
@@ -198,7 +203,7 @@ def check_draft(md_path: str) -> tuple[list[dict], list[dict]]:
 
         # ── 規則 4: RULING_NO_QUOTE ────────────────────────────────────────
         # 裁判字號後缺乏引號原文
-        if _RULING_CITE.search(line) and not re.match(r'^案號[：:]', stripped) and not _RULING_LISTING.match(stripped):
+        if _RULING_CITE.search(line) and not re.match(r'^案號[：:]', stripped) and not _RULING_LISTING.match(stripped) and not _is_list_line(stripped):
             if not _QUOTED_TEXT.search(ctx):
                 add_violation(
                     'RULING_NO_QUOTE', i,
@@ -234,7 +239,7 @@ def check_draft(md_path: str) -> tuple[list[dict], list[dict]]:
         # 引用卷宗、筆錄或書狀必須有頁碼或佔位符
         if _VOLUME_REF.search(line):
             # 排除純清單行
-            is_list_line = bool(re.match(r'^（?(?:[甲乙丙丁上被原附]證|附件)\d*[：:]', stripped))
+            is_list_line = _is_list_line(stripped)
             if not is_list_line and not _PAGE_NUMBER.search(ctx):
                 add_violation(
                     'MISSING_PAGE_REF', i,

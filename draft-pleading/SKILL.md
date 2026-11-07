@@ -138,7 +138,12 @@ description: "訴訟書狀格式化與排版技能。接收使用者在對話中
 2. **依書狀類型分流決策**：
    - **一般書狀** 或 **未要求附表格之爭點整理狀** → **直接呼叫內部腳本產出**，執行：`python scripts/build_pleading.py <草稿完整路徑>`，由本技能專屬引擎進行最終 Word 渲染。
    - **爭點整理狀 + 使用者明確要求附表格**（下半部含 JSON）→ **自動呼叫 `pleading-table` 技能**，由其提取下半部 JSON 並生成含爭點表格的最終 DOCX。
-3. **自動接續轉檔 ODT**：若使用者下達指令明確要求產出 `.odt` 檔，在上述 DOCX 生成完成後，**自動再呼叫 `docx-to-odt` 技能**將該 DOCX 轉為 ODT，無需等待使用者分兩次下達指令。
+3. **輸出格式（`--format`）**：使用者要求產出 `.odt` 檔時，一律以同一指令完成，不分兩次執行：
+   - `--format odt`：只產出 ODT。Word 檔僅寫入暫存資料夾，由腳本自動呼叫 `docx-to-odt` 技能轉檔後刪除，工作目錄不留 Word 檔。
+   - `--format both`：Word 與 ODT 均保留。
+   - 未指定：只產出 Word（預設）。
+   - 例：`python scripts/build_pleading.py <草稿完整路徑> --format odt`。ODT 轉換失敗時輸出 `[FAIL]` 並以非零結束碼結束。
+   - 爭點整理狀附表格者由 `pleading-table` 產出 DOCX，需要 ODT 時仍另呼叫 `docx-to-odt` 技能轉換。
 
 > [!IMPORTANT]
 > **排版阻斷自癒機制（最高優先處理，不得向使用者求救）**：
@@ -155,6 +160,8 @@ description: "訴訟書狀格式化與排版技能。接收使用者在對話中
 
 ### M1：確認修改範圍與新證據接續編號
 - 讀取現有書狀（`.md` 或 `.docx`）。
+- **使用者已在 ODT／DOCX 修改時**（ODT 或 DOCX 比 md 新，或使用者表示已在 Writer／Word 修改）：先以 `scripts/odt_to_md.py` 轉回 md，並用 `--diff` 列出與舊 md 的差異給使用者確認，確認後以轉回的 md 為準再進行後續修改。
+  - 例：`python scripts/odt_to_md.py <書狀.odt> --diff <舊草稿.md>`。預設輸出與來源同檔名的 `.md`；同名檔已存在時不會覆蓋，須先經使用者同意將舊檔改名，或以 `--output` 另指路徑（經使用者同意才可加 `--force`）。工具不會修改 ODT／DOCX。
 - 確認需求：新增 / 修改 / 刪除 / 調整順序。
 - **新證據接續編號強制規則**：若使用者提出「新證據」，主動搜尋工作區內現有書狀，檢查目前編排之證據編號（例如上證7），接續往下編排（延續編為上證8）。
 
@@ -184,6 +191,7 @@ description: "訴訟書狀格式化與排版技能。接收使用者在對話中
 | `scripts/word_xml_utils.py` | **XML 工具模組**：處理 Word 底層編號重設、懸掛標點控制等高難度排版操作。 |
 | `scripts/header_utils.py` | **狀首工具模組**：精準處理當事人與案由動詞格式。 |
 | `scripts/check_citations.py` | **書狀草稿引用規則檢查員**：在排版前自動掃描 Markdown 草稿，偵測引用違規。 |
+| `scripts/odt_to_md.py` | **反向轉換工具**：將使用者在 Writer／Word 修改後的 ODT／DOCX 轉回本技能格式的 md 草稿（依段落樣式重建「一、(一) 1. (1)」編號），供修改補充模式 M1 使用。 |
 
 ---
 
@@ -195,4 +203,4 @@ description: "訴訟書狀格式化與排版技能。接收使用者在對話中
 | `twlegalrag-search` | 若使用者在書狀撰寫過程中臨時需要精確查證個別裁判字號，可直接調用 |
 | `pdf` / `docx` | 讀取既有書狀或訴訟資料 |
 | `pleading-table` | **使用者明確要求附表格時**才呼叫；接收爭點整理狀雙格式草稿，生成含爭點表格的最終 Word 檔 |
-| `docx-to-odt` | 若使用者明確要求轉為 ODT，於 DOCX 排版完成後自動接續呼叫本技能轉換 |\n
+| `docx-to-odt` | `build_pleading.py --format odt/both` 內部自動呼叫其轉檔腳本；`pleading-table` 產出之 DOCX 需轉 ODT 時另行呼叫 |\n

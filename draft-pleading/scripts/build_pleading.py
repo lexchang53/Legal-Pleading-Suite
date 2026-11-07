@@ -1,6 +1,9 @@
 import sys
 import os
 import argparse
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 # 初始化：強制標準輸出採用 UTF-8，避免 Windows (CP950) 環境下印出中文字元出錯
@@ -231,7 +234,9 @@ def main():
                         default=os.path.join(os.path.dirname(__file__),
                                              '..', 'assets', 'pleading-tmpl.docx'))
     parser.add_argument('--header', help='狀首來源 .docx 路徑')
-    parser.add_argument('--output', help='輸出路徑')
+    parser.add_argument('--output', help='輸出路徑（副檔名依 --format 決定）')
+    parser.add_argument('--format', dest='fmt', choices=('docx', 'odt', 'both'), default='docx',
+                        help='輸出格式：docx（預設）、odt（Word 僅作暫存，轉檔後刪除）、both')
     parser.add_argument('--check-template', dest='check', metavar='PATH',
                         help='僅檢查模板完整性')
     args = parser.parse_args()
@@ -253,18 +258,24 @@ def main():
         sys.exit(1)
 
     if args.output:
-        output_path = os.path.abspath(args.output)
+        stem = os.path.splitext(os.path.abspath(args.output))[0]
     else:
         base = os.path.splitext(os.path.basename(draft_path))[0]
         if base.endswith('_草稿'):
             base = base[:-3]
-        output_dir = os.path.dirname(draft_path)
-        output_path = os.path.join(output_dir, f"{base}.docx")
+        stem = os.path.join(os.path.dirname(draft_path), base)
+
+    # output_path 為 Word 檔；僅輸出 ODT 時，Word 檔於存檔前改寫入暫存資料夾，轉檔後刪除
+    odt_path = f"{stem}.odt" if args.fmt in ('odt', 'both') else None
+    output_path = f"{stem}.docx"
+    temp_dir = None
 
     print(f"[START] 開始排版 (v2 iteration-3)")
     print(f"  模板: {template_path}")
     print(f"  草稿: {draft_path}")
-    print(f"  輸出: {output_path}")
+    print(f"  輸出: {odt_path if args.fmt == 'odt' else output_path}")
+    if args.fmt == 'both':
+        print(f"        {odt_path}")
     if args.header:
         print(f"  狀首: {args.header}")
     print()
@@ -452,10 +463,48 @@ def main():
     
     disable_hanging_punctuation(doc)
 
+    if args.fmt == 'odt':
+        temp_dir = tempfile.mkdtemp(prefix='draft-pleading-')
+        output_path = os.path.join(temp_dir, os.path.basename(output_path))
+
     doc.save(output_path)
     print(f"\n[DONE] 排版完成！")
     print(f"  總段落數: {para_count}")
-    print(f"  輸出檔案: {output_path}")
+
+    if odt_path:
+        try:
+            ok = convert_to_odt(output_path, odt_path)
+        finally:
+            if temp_dir:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+        if not ok:
+            sys.exit(1)
+        if args.fmt == 'both':
+            print(f"  輸出檔案: {output_path}")
+        print(f"  輸出檔案: {odt_path}")
+    else:
+        print(f"  輸出檔案: {output_path}")
+
+
+def convert_to_odt(docx_path, odt_path):
+    """呼叫 docx-to-odt 技能，將 Word 檔轉為已完成 LibreOffice 後處理之 ODT。"""
+    converter = os.path.normpath(os.path.join(
+        _script_dir, '..', '..', 'docx-to-odt', 'scripts', 'convert_docx_to_odt.py'))
+    if not os.path.exists(converter):
+        print(f"[FAIL] 找不到 docx-to-odt 轉檔腳本：{converter}")
+        return False
+
+    # LibreOffice 內附之 Python 會將 sys.executable 設為資料夾，此時改用 PATH 上的 python
+    python_exe = sys.executable if os.path.isfile(sys.executable) else (
+        shutil.which('python') or shutil.which('python3') or sys.executable)
+
+    print(f"\n[ODT] 轉換為 ODT...")
+    result = subprocess.run([python_exe, converter, docx_path, '--output', odt_path])
+    if result.returncode != 0 or not os.path.exists(odt_path):
+        print("[FAIL] ODT 轉換失敗，請參考上方 docx-to-odt 之輸出。")
+        return False
+    return True
+
 
 if __name__ == '__main__':
     main()
