@@ -1,6 +1,6 @@
 ---
 name: legal-research
-description: "法律問題研究與案情爭點分析技能。當使用者提供案卷資料、契約、判決或事實敘述，需要分析法律問題、拆解爭點、擬定訴訟攻防策略、或調用 twlegalrag-search 檢索台灣法院裁判、憲法法庭裁判與行政函釋時使用。若環境具備 linkly-ai，亦支援檢索私有法學文獻與筆記庫。本技能採「漸進式爭點研究循環」，與律師多輪討論並將結論即時固化至 strategy_memo.md，作為後續 draft-pleading（訴訟書狀）或 legal-opinion（法律意見書）的上游共用研究依據。若僅需單純排版書狀，請改用 draft-pleading；若僅需單純排版法律意見書，請改用 legal-opinion。"
+description: "法律問題研究與案情爭點分析技能。當使用者提供案卷資料、契約、判決或事實敘述，需要分析法律問題、拆解爭點、擬定訴訟攻防策略、或調用 twlegalrag-search 檢索台灣法院裁判、憲法法庭裁判與行政函釋時使用。若環境掛載 taiwan-legal-db MCP，另以其補查歷審、修法沿革與立法理由、判解、訴願與準司法決定、量刑統計等 twlegalrag 未涵蓋之官方資料；若環境具備 linkly-ai，亦支援檢索私有法學文獻與筆記庫。本技能採「漸進式爭點研究循環」，與律師多輪討論並將結論即時固化至 strategy_memo.md，作為後續 draft-pleading（訴訟書狀）或 legal-opinion（法律意見書）的上游共用研究依據。若僅需單純排版書狀，請改用 draft-pleading；若僅需單純排版法律意見書，請改用 legal-opinion。"
 ---
 
 # 法律問題研究與案情分析技能 (`legal-research`)
@@ -25,7 +25,7 @@ description: "法律問題研究與案情爭點分析技能。當使用者提供
 > [!CAUTION]
 > **法源真實性與引用禁令（絕對禁止）：**
 > 1. **嚴禁捏造**：絕對禁止捏造不存在的裁判字號、法規條文、函釋文號或學者論著內容。
-> 2. **嚴禁性質混淆**：🔴 **絕對禁止將行政函釋或勞動裁決稱為「法院見解」或「判決」**；學說見解必須標明為「學者見解」或「文獻論述」，不得與法院判決混為一談。
+> 2. **嚴禁性質混淆**：🔴 **絕對禁止將行政函釋、勞動裁決、訴願決定或其他準司法決定稱為「法院見解」或「判決」**；最高法院決議、法律問題座談與判例須依 `get_precedent` 之編註標明性質及是否「不再援用／停止適用」；學說見解必須標明為「學者見解」或「文獻論述」，不得與法院判決混為一談。
 > 3. **嚴禁引用廢棄裁判**：若裁判在 `case_history` 中顯示已被上級審廢棄，絕對禁止作為有效前例引用。
 > 4. **全文引述為準**：不得將 `hit_excerpt`（命中預覽）直接作為實體論述依據進行逐字引述，必須以 `fulltext_excerpt` 理由全文為準。
 > 5. **未拍板不得擅自定案**：在律師未明確確認結論前，不得擅自將爭點標記為 `[已定案]`。
@@ -49,8 +49,9 @@ description: "法律問題研究與案情爭點分析技能。當使用者提供
 1. 收集使用者提供之文字敘述或檔案（支援 `.md`、`.pdf`、`.docx`、`.odt`）。
 2. 自動梳理並區分「客觀事實」「待證事實」與「現有證據」。
 3. **資料來源配置鎖定（跨輪次狀態保持）**：
-   - AI 在對話開始時感知當前環境：確認是否掛載 `linkly-ai` 技能。
+   - AI 在對話開始時感知當前環境：確認是否掛載 `linkly-ai` 技能，以及是否掛載 `taiwan-legal-db` MCP（工具清單中有 `search_judgments`、`get_judgment`、`query_regulation`、`get_legislative_history` 等屬於 `taiwan-legal-db` 伺服器的工具）。
    - 若有 `linkly-ai`，標記本案具備「私有法學文獻庫」擴充能力；若無，標記為「純官方檢索」。
+   - 若有 `taiwan-legal-db`，標記本案具備「官方補充檢索」擴充能力；若無，標記為「未配置」，相關需求改提示律師至官網查詢。
    - **此標記在同一個對話串中僅在初始時確認一次，並固化於 `strategy_memo.md` 頂部**，後續討論各爭點時直接沿用，不再重複詢問或判斷；重新開啟新對話串時則重新校準。
 4. **斷點續傳檢核**：若工作目錄已存在 `strategy_memo.md`，讀取其內容並詢問是否接續研究。
 
@@ -74,10 +75,44 @@ description: "法律問題研究與案情爭點分析技能。當使用者提供
 檢索採雙軌分流標準：
 
 **軌道一：官方實務檢索（核心必備 — `twlegalrag-search`）**
-- **依賴確認**：`twlegalrag-search` 為獨立技能（<https://github.com/lexchang53/twlegalrag-search>）。若環境中找不到此技能，**停止軌道一**，提示使用者依該 repo 的 README 安裝技能並設定 TLR 連線金鑰；不得改用網頁爬蟲、其他檢索管道或憑記憶補寫裁判。
+- **依賴確認**：`twlegalrag-search` 為獨立技能（<https://github.com/lexchang53/twlegalrag-search>）。若環境中找不到此技能，**停止軌道一**，提示使用者依該 repo 的 README 安裝技能並設定 TLR 連線金鑰；不得以 `taiwan-legal-db`、網頁爬蟲或其他檢索管道取代，亦不得憑記憶補寫裁判。
 - **查詢詞建構**：以「**法律構成要件關鍵字 + 法律效果關鍵字**」組合（例：`競業禁止 違約金 過高`）；嚴禁跨法律效果擴展。
 - **正反雙向查證**：正面檢索支持案例，反面檢索（加「駁回」「敗訴」）實務陷阱。
 - **審級與廢棄過濾**：最高法院優先；嚴格檢查 `case_history` 排除已廢棄裁判。
+
+**軌道一之補充：官方補充檢索（可選擴充 — `taiwan-legal-db` MCP）**
+- **觸發條件**：本案標記具備 `taiwan-legal-db`，且需求落在下方分工表中「`taiwan-legal-db`」欄位時調用。若環境未配置則自動跳過，並告知律師可至官網查詢。
+- **定位**：`taiwan-legal-db` 是即時查詢官方網站的**關鍵字檢索與調卷工具**，不做語義檢索，也不產出可供 `scripts/check.py` 驗收的 bundle。它補足 `twlegalrag` 的缺口，**不取代** `twlegalrag`。
+- **其他法律檢索 MCP**：未列於本技能之其他法律檢索 MCP，不在本技能流程中使用。
+
+**`twlegalrag` 與 `taiwan-legal-db` 分工表**
+
+| 研究需求 | 首選 | 補充／交叉核對 |
+|---|---|---|
+| 依爭點找實務見解（概念式、語義式檢索） | `twlegalrag` | `taiwan-legal-db` 的 `search_judgments` 僅在需要**精確關鍵字**或以**裁判主文措辭篩選勝敗方**（`main_text`）時補查 |
+| 裁判字號精確調卷 | `twlegalrag` | `twlegalrag` 查無時，以 `taiwan-legal-db` 的 `search_judgments`（`case_word` ＋ `case_number`）／`get_judgment` 補查 |
+| 裁判廢棄過濾（歷審） | `twlegalrag` 的 `case_history` | **擬納入定案結論之關鍵裁判**，以 `taiwan-legal-db` 的 `get_judgment` 歷審清單交叉核對有無發回、廢棄 |
+| 現行法條原文 | `twlegalrag law` | — |
+| **行為時法、修法沿革、立法理由** | `taiwan-legal-db`（`query_regulation` 附沿革、`get_legislative_history`） | `twlegalrag law` 只有現行版本，跨修法年份案件一律以此補查 |
+| 行政函釋（語義探索與效力 `status`） | `twlegalrag`（`ref-search` → `ref --full`） | `twlegalrag` 查無、或 `status` 為 `unknown` 時，以 `taiwan-legal-db` 的 `search_agency_interpretations`／`get_agency_interpretation` 補查官網全文與「停止適用」標示 |
+| 智慧局專利、商標審查基準 | `taiwan-legal-db` | — |
+| 不當勞動行為裁決 | `twlegalrag` | `taiwan-legal-db` 的 `search_administrative_decisions`（`source="不當勞動行為"`） |
+| 釋字、憲判字 | `twlegalrag` | 需要**引用脈絡**（往前、往後追溯）或**大法官意見書**時，用 `taiwan-legal-db` 的 `get_citations`／`get_interpretation` |
+| 憲法法庭受理中案件、卷內書狀、法庭之友意見書 | `taiwan-legal-db`（`search_constitutional_docket`／`get_constitutional_case_file`） | — |
+| 判解：最高法院決議、法律問題座談、停止適用判例、院字／院解字、大法庭裁定 | `taiwan-legal-db`（`search_precedents`／`get_precedent`） | — |
+| 訴願決定與準司法決定（公平會、採購申訴、保訓會、金管會裁罰、律師懲戒等） | `taiwan-legal-db`（`search_administrative_decisions`） | — |
+| 立法院議案、公報、法規命令草案預告 | `taiwan-legal-db`（`search_legislative_records`） | — |
+| 量刑統計、司法統計 | `taiwan-legal-db`（`get_sentencing_statistics`／`search_statistics`） | 僅供風險評估，不得作為法源 |
+| 公開法學文獻（司法研究年報、國圖期刊索引、開放取用期刊） | `taiwan-legal-db`（`search_legal_literature`） | 與軌道二私有文獻庫並用；引用規則同軌道二「法學文獻與專論」 |
+| 地方自治法規、條約、交易所規章 | `taiwan-legal-db`（`search_other_regulations`） | — |
+
+**`taiwan-legal-db` 使用規則**
+1. **正式文書引用門檻**：經 `taiwan-legal-db` 找到的裁判，若擬引用於 `draft-pleading` 或 `legal-opinion` 產出之正式文書，必須能經 `twlegalrag` 依字號調卷確認並納入 bundle；無法納入者，在 `strategy_memo.md` 標記 🟡「僅經 taiwan-legal-db 核對」，由律師決定是否引用。
+2. **「出錯」不等於「查無」**：工具回報官網驗證失敗、逾時或連線錯誤時，應告知律師「該來源暫時無法查詢」，不得記為查無資料；真正查無時，改換關鍵字或改用 `twlegalrag` 語義檢索。
+3. **預設關閉的來源**：內政部、衛福部、勞動部訴願決定與醫事懲戒公告因官網設有驗證碼，工具預設不查詢，只回傳官網網址。直接將網址提供律師自行查詢，不得嘗試啟用或繞過。
+4. **快取時效**：裁判全文快取 30 天、法規條文快取 7 天。日常研究不必特別處理；律師明確要求確認最新狀態（例如近期宣判或剛修正之條文）時，提示以官網核對。
+5. **資料可能含個資**：部分訴願決定、懲戒決議未遮蔽當事人姓名，寫入 `strategy_memo.md` 時一律去識別化。
+6. **查詢詞禁止含可識別資訊**：與 `twlegalrag` 相同，查詢詞只寫法律爭點，不得包含當事人姓名、公司名或機密事實。
 
 **軌道二：私有法學知識庫檢索（可選擴充 — `linkly-ai`）**
 - **觸發條件**：本案標記具備 `linkly-ai` 且律師要求「查我的筆記」「搜尋知識庫」或涉及重要學說文獻時調用。若環境未配置則自動跳過。
@@ -110,7 +145,7 @@ description: "法律問題研究與案情爭點分析技能。當使用者提供
 - **當事人**：原告 [姓名/公司] vs 被告 [姓名/公司]
 - **案由**：[例如：給付工程款 / 損害賠償]
 - **審級**：[例如：第一審 / 第二審上訴]
-- **資料來源配置**：官方實務檢索（twlegalrag: 啟用）｜ 私有法學庫（Linkly: 啟用 / 未配置）
+- **資料來源配置**：官方實務檢索（twlegalrag: 啟用）｜ 官方補充檢索（taiwan-legal-db: 啟用 / 未配置）｜ 私有法學庫（Linkly: 啟用 / 未配置）
 - **核心事實摘要**：[1-2 句話說明案件客觀背景]
 
 ## 爭點地圖
@@ -156,6 +191,7 @@ description: "法律問題研究與案情爭點分析技能。當使用者提供
 | Skill | 性質 | 用途 |
 |---|---|---|
 | `twlegalrag-search` | **核心必備（獨立 repo）** | 官方權威法源檢索引擎。檢索各級法院裁判、憲判字、主管機關函釋與勞動裁決。另行安裝：<https://github.com/lexchang53/twlegalrag-search> |
+| `taiwan-legal-db`（MCP） | **可選擴充** | 官方補充檢索。歷審核對、修法沿革與立法理由、判解、訴願與準司法決定、憲法法庭卷宗、量刑統計、公開法學文獻、地方法規。分工見「軌道一之補充」。安裝：`uv tool install mcp-taiwan-legal-db` 後 `claude mcp add taiwan-legal-db mcp-taiwan-legal-db --scope user` |
 | `linkly-ai` | **可選擴充** | 私有知識庫檢索引擎。使用者有安裝時，按需檢索私有法學文獻、專題筆記與裁判心得 |
 | `draft-pleading` | **下游必備** | 訴訟書狀排版引擎。直接讀取 `strategy_memo.md` 產出法院書狀 Word 檔 |
 | `legal-opinion` | **下游必備** | 法律意見書排版引擎。直接讀取 `strategy_memo.md` 產出函文式法律意見書 Word 檔 |

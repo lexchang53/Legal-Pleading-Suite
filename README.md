@@ -20,6 +20,7 @@
 - [適用情境](#-適用情境)
 - [核心模組一覽](#-核心模組一覽)
 - [法源檢索依賴：twlegalrag-search（獨立 repo）](#-法源檢索依賴twlegalrag-search獨立-repo)
+- [官方補充檢索（選配）：taiwan-legal-db MCP](#-官方補充檢索選配taiwan-legal-db-mcp)
 - [私有知識庫擴充：Gemini Notebook、notebooklm-py 與 Obsidian](#-私有知識庫擴充gemini-notebooknotebooklm-py-與-obsidian)
 - [環境安裝與先備依賴](#-環境安裝與先備依賴)
 - [實戰工作流 (End-to-End Workflow)](#-實戰工作流-end-to-end-workflow)
@@ -35,6 +36,7 @@
 - **研究與排版解耦**：將「法律攻防思維」與「嚴苛格式排版」分離，避免 AI 在長對話中因負荷過載而產生幻覺或格式跑版。
 - **漸進式爭點研究**：以爭點為單位展開人機多輪協同互動，攻防推演拍板後即時固化至策略備忘錄（`strategy_memo.md`）。
 - **專業級裁判檢索與驗證**：整合 `tw-legal-rag` 引擎，具備「要件+效果」精準公式、正反雙向查證、四類法源嚴格隔離與審級廢棄過濾。
+- **官方補充檢索（選配）**：可搭配 `taiwan-legal-db` MCP，補查歷審清單、行為時法與立法理由、最高法院決議與停止適用判例、訴願與準司法決定、憲法法庭卷宗、量刑統計等語義檢索未涵蓋之官方資料。
 - **嚴謹的訴訟書狀論證架構**：草稿嚴格遵循 CRAC 論證格式、四層級大綱編號、狀首動詞表、年份紀元規範與證據接續編號。
 - **表格型法律文件支援**：可輸出符合臺灣高等法院格式之爭點整理表、聲請調查證據表與 7 欄高院證據清單表。
 - **DOCX / ODT 雙路徑**：以 DOCX 為主輸出，並透過進階 XML 堆疊修復原生支援 LibreOffice 之 Tab/Shift-Tab 大綱升降級與外側（Outside）行編號。
@@ -49,7 +51,7 @@
 1. **職責分離與減輕 Context 負擔**：
    舊架構將「爭點探討」、「法源檢索」與「書狀排版」全部塞在同一個技能中，導致 AI 的系統提示詞（Prompt）過於沉重，在產出長篇書狀時容易遺忘嚴格的排版格式或產生推論幻覺。
 2. **擺脫脆弱的瀏覽器自動化依賴**：
-   舊版依賴無頭瀏覽器模擬登入爬取網頁，極易因介面改版、Cookie 過期、網路延遲而中斷失敗。
+   舊版依賴無頭瀏覽器模擬登入爬取網頁，極易因介面改版、Cookie 過期、網路延遲而中斷失敗。核心檢索已改由 `twlegalrag` 負責；選配的 `taiwan-legal-db` 雖會即時連線官網，但只用於補查，未安裝或暫時查不到時，研究與撰狀流程照常運作。
 3. **原生 CLI 與裁判檢索專用工具的確定性**：
    改採專為台灣法律設計的 `tw-legal-rag` 原生 CLI 工具後，查詢速度達到毫秒級，且能直接取得精準的裁判字號、法官理由全文、審級歷史（廢棄檢驗）與引用封包驗證，使整條流水線具備極高的工程穩定度與法律真實性。
 
@@ -75,6 +77,7 @@
 |---|---|---|
 | [`legal-research/`](legal-research/) | **核心研究** | 法律問題研究專用引擎。以爭點為單位展開多輪攻防推演，語義觸發裁判檢索，將結論固化為 `strategy_memo.md`。 |
 | [`twlegalrag-search`](https://github.com/lexchang53/twlegalrag-search) | **法源檢索（外部依賴，必要）** | 臺灣法院裁判、107 個機關行政函釋與現行法條之語義檢索、效力查驗與引用防偽。**已獨立為單一 repo**，`legal-research` 以其為核心依賴，請另行安裝。 |
+| [`taiwan-legal-db`](https://github.com/lawchat-oss/mcp-taiwan-legal-db) | **官方補充檢索（外部 MCP，選配）** | 即時查詢司法院、全國法規資料庫與各機關官網之關鍵字檢索與調卷工具。`legal-research` 以其補查 `twlegalrag` 未涵蓋之資料，不取代語義檢索與引用驗收。 |
 | [`draft-pleading/`](draft-pleading/) | **書狀排版** | 訴訟書狀核心格式化引擎。讀取研究成果，依 CRAC 論證格式生成 Markdown 草稿，並以專屬引擎渲染為 Word 檔。 |
 | [`draft-pleading-const/`](draft-pleading-const/) | **憲法審查** | 憲法法庭裁判及法規範憲法審查聲請書專屬排版引擎。 |
 | [`legal-opinion/`](legal-opinion/) | **意見書排版** | 函文式法律意見書、契約審核備忘錄格式化與排版引擎。 |
@@ -92,6 +95,34 @@
 - `draft-pleading` 在撰狀過程中臨時查證個別裁判字號時會選用它。
 
 它與開發者版 `tw-legal-rag` skill 的關係與功能對照、安裝方式，以及 **TLR 連線金鑰的申請步驟**，請見 [twlegalrag-search 的 README](https://github.com/lexchang53/twlegalrag-search#readme)。
+
+---
+
+## 🧭 官方補充檢索（選配）：taiwan-legal-db MCP
+
+[`mcp-taiwan-legal-db`](https://github.com/lawchat-oss/mcp-taiwan-legal-db)（LawChat 開源，MIT 授權）是一個 MCP 伺服器，在使用者查詢當下，從使用者自己的電腦即時連線司法院、法務部與各機關官網取得公開資料。`legal-research` 在對話開始時偵測是否掛載此 MCP；有則啟用「官方補充檢索」，沒有則自動跳過。
+
+### 與 twlegalrag-search 的分工
+
+| 研究需求 | 首選 | 補充／交叉核對 |
+|---|---|---|
+| 依爭點找實務見解（語義檢索） | `twlegalrag` | 需精確關鍵字或以裁判主文篩選勝敗方時，以 `taiwan-legal-db` 補查 |
+| 裁判字號調卷 | `twlegalrag` | `twlegalrag` 查無時以 `taiwan-legal-db` 補查 |
+| 裁判廢棄過濾 | `twlegalrag` 的 `case_history` | 擬納入定案結論之關鍵裁判，以 `taiwan-legal-db` 歷審清單交叉核對 |
+| 現行法條 | `twlegalrag law` | — |
+| 行為時法、修法沿革、立法理由 | `taiwan-legal-db` | `twlegalrag` 只有現行版本 |
+| 行政函釋 | `twlegalrag` | 查無或效力未驗證時，以 `taiwan-legal-db` 補查官網全文與「停止適用」標示 |
+| 判解（決議、法律問題座談、停止適用判例、大法庭裁定） | `taiwan-legal-db` | — |
+| 訴願與準司法決定（公平會、採購申訴、保訓會、金管會裁罰等） | `taiwan-legal-db` | — |
+| 憲法法庭受理中案件、卷內書狀、法庭之友意見書 | `taiwan-legal-db` | — |
+| 量刑統計、司法統計 | `taiwan-legal-db` | 僅供風險評估，不作為法源 |
+
+### 使用限制
+
+- **正式文書引用門檻**：只經 `taiwan-legal-db` 取得的裁判，須再經 `twlegalrag` 調卷納入 bundle，才能通過 `check.py` 驗收；否則標記待律師裁量。
+- **驗證碼來源維持關閉**：內政部、衛福部、勞動部訴願決定與醫事懲戒公告，官網設有驗證碼，`legal-research` 不啟用、不繞過，僅提供官網網址供使用者自行查詢。
+- **快取時效**：裁判全文快取 30 天、法規條文快取 7 天，最新宣判或剛修正之條文請以官網核對。
+- **使用責任**：此工具為非官方爬蟲，請求由使用者電腦發出。使用前請閱讀其 [免責聲明](https://github.com/lawchat-oss/mcp-taiwan-legal-db#免責聲明)，並遵守各網站的使用規定。
 
 ---
 
@@ -144,13 +175,30 @@
 2. **安裝 `twlegalrag-search` 技能**：將該 repo 放進 AI 工具的技能區。
 3. **申請 TLR 連線金鑰**：TLR 服務自 **2026-10-30** 起需要登入，未設定憑證時查詢一律回 HTTP 401。請到 <https://dr-legal.com.tw/mcp/keys> 產生金鑰，寫入 `~/.twlegalrag/config.toml`，再以 `twlegalrag law 民法 184` 驗證。
 
-### 3. 本專案技能安裝說明
+### 3. 官方補充檢索安裝：`taiwan-legal-db`（選配）
+
+不安裝也能使用本套件；安裝後 `legal-research` 會自動啟用補充檢索。
+
+1. **安裝套件**（建議用 `uv` 或 `pipx` 裝成獨立工具）：
+   ```bash
+   uv tool install mcp-taiwan-legal-db
+   ```
+2. **註冊到 AI 工具**：
+   - Claude Code：
+     ```bash
+     claude mcp add taiwan-legal-db mcp-taiwan-legal-db --scope user
+     ```
+   - 其他支援 MCP 的 AI 工具：在其 MCP 設定中新增 stdio 伺服器，名稱 `taiwan-legal-db`，指令 `mcp-taiwan-legal-db`。
+3. **首次查詢裁判書**時會自動下載約 150MB 的 Chromium（僅一次），用於通過司法院網站的防爬檢查。
+4. **升級**：`uv tool upgrade mcp-taiwan-legal-db`。
+
+### 4. 本專案技能安裝說明
 
 > [!WARNING]
 > **不要**將整個 `Legal-Pleading-Suite/` 母目錄直接放入 AI 工具的技能區（Skills folder）。
 > 多數 AI 工具只會偵測技能區中「直接可見」的技能目錄與其中的 `SKILL.md`，若您只是把整個解壓後的母目錄原封不動放進去，AI 工具通常**無法正確辨識**位於深層子目錄內的技能。
 
-本專案採 Monorepo 結構管理，真正應加入 AI 工具技能區的，是前述的 **7 個核心技能子目錄**（`twlegalrag-search` 請依上一節另行安裝）：
+本專案採 Monorepo 結構管理，真正應加入 AI 工具技能區的，是前述的 **7 個核心技能子目錄**（`twlegalrag-search` 請依第 2 節另行安裝；`taiwan-legal-db` 為 MCP，依第 3 節安裝）：
 
 - `legal-research/`
 - `draft-pleading/`
@@ -165,7 +213,7 @@
 2. 將上述 7 個子目錄個別移入或軟連結（Junction/Symlink）至您的 AI 工具技能區。
 3. 確認每個技能目錄底下都可直接看到 `SKILL.md`。
 
-### 4. 非技能檔案應放哪裡？
+### 5. 非技能檔案應放哪裡？
 
 下列內容**不是技能**，不需要放進 AI 工具的技能區：
 - `README.md`
@@ -174,7 +222,7 @@
 
 將整個 `Legal-Pleading-Suite/` 保留在您自己的專案資料夾或工作區中作為說明文件與範本資源即可。
 
-### 5. 進一步深入瞭解（進階參考文件）
+### 6. 進一步深入瞭解（進階參考文件）
 
 本專案將嚴謹的法律撰稿規則與排版邏輯抽離至各模組獨立文件，若您想深入瞭解內部運作準則，請參考：
 - **`draft-pleading/references/`**：包含草稿撰寫規則（`phase5-draft-rules.md`）、撰寫計畫要求（`phase3-writing-plan.md`）與第三審書狀攻防（`pleading-third-instance.md`）。
@@ -213,7 +261,7 @@
 ```
 
 1. **生長式爭點地圖**：AI 梳理事實後拆解爭點，標記 `[待討論]`、`[討論中]`、`[已定案]`。
-2. **多輪攻防與實務檢索**：律師與 AI 逐一聚焦爭點進行辯論，按需調用 `twlegalrag-search` 進行正反雙向裁判檢索。
+2. **多輪攻防與實務檢索**：律師與 AI 逐一聚焦爭點進行辯論，按需調用 `twlegalrag-search` 進行正反雙向裁判檢索；若已安裝 `taiwan-legal-db`，另補查歷審、行為時法與立法理由、判解及訴願決定等資料。
 3. **結論即時固化**：律師拍板確認後，AI 自動將結論、裁判字號與攻防要點寫入 `strategy_memo.md`。
 
 ### 步驟 3：啟動書狀起草 (`draft-pleading`)
@@ -336,12 +384,21 @@ twlegalrag law 民法 252
 python <twlegalrag-search 技能資料夾>/scripts/check.py bundle.json pleading_draft.txt
 ```
 
+### 8. 官方補充檢索（需安裝 `taiwan-legal-db`）
+```text
+本案借款發生於 108 年，請查民法第 205 條在 110 年修正前的條文與修正理由，並確認最高法院有無相關決議。
+```
+```text
+這件最高法院判決有沒有被發回？請用 taiwan-legal-db 列出歷審。
+```
+
 ---
 
 ## 📄 開源授權與致謝
 
 - 本專案主體採用 **[CC BY-NC-SA 4.0](LICENSE.md)** 授權。
 - 法源檢索技能 [`twlegalrag-search`](https://github.com/lexchang53/twlegalrag-search)（獨立 repo）的核心檢索引擎依賴於 [法律偵探 (@aa0101181514)](https://github.com/aa0101181514) 開發之開源工具 [tw-legal-rag](https://github.com/aa0101181514/tw-legal-rag)，特此致謝。
+- 選配之官方補充檢索使用 [LawChat](https://lawchat.com.tw) 開源的 [mcp-taiwan-legal-db](https://github.com/lawchat-oss/mcp-taiwan-legal-db)（MIT 授權），特此致謝。
 - 其他由本專案自行開發之模組，請以儲存庫內授權文件與模組說明為準。
 
 ---

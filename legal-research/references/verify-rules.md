@@ -1,6 +1,6 @@
 # 法律見解深度驗證 (Deep Verification) 準則
 
-本準則借鑒 LawThinker 的 Explore-Verify-Memorize 框架。在將任何自 `twlegalrag-search` 查詢到的官方裁判、或自 `linkly-ai` 檢索到的法學文獻納入訴訟策略備忘錄或定案結論前，AI 必須針對【每一項】關鍵材料進行嚴格的原子級別驗證（Atomic Verification）。
+本準則借鑒 LawThinker 的 Explore-Verify-Memorize 框架。在將任何自 `twlegalrag-search` 或 `taiwan-legal-db` 查詢到的官方裁判、函釋與決定、或自 `linkly-ai` 檢索到的法學文獻納入訴訟策略備忘錄或定案結論前，AI 必須針對【每一項】關鍵材料進行嚴格的原子級別驗證（Atomic Verification）。
 
 ---
 
@@ -10,8 +10,8 @@
 
 ### 軌道一：官方裁判與行政函釋（具實質裁判拘束力）
 1. **知識準確性 (Knowledge Accuracy)**：
-   - 該實體法條是否現行有效？有無最新修法？
-   - 該裁判在 `case_history` 中是否顯示已被上級審廢棄？（若被廢棄，🔴 **絕對禁止作為有效前例引用**）。
+   - 該實體法條是否現行有效？有無最新修法？案件事實跨越修法年份時，是否已以 `taiwan-legal-db` 的修法沿革（`query_regulation` 附沿革、`get_legislative_history`）核對**行為時法**？
+   - 該裁判在 `case_history` 中是否顯示已被上級審廢棄？（若被廢棄，🔴 **絕對禁止作為有效前例引用**）。擬納入定案結論之關鍵裁判，若環境具備 `taiwan-legal-db`，另以 `get_judgment` 的歷審清單交叉核對。
    - 該裁判見解是否已被大法庭裁定或憲法法庭判決實質變更？
 2. **事實與法律關聯性 (Fact-Law Relevance)**：
    - 法規與裁判的構成要件，是否能嚴格「涵攝」於本案事實？
@@ -51,6 +51,9 @@
 | 🟠 | **僅取得命中預覽 (hit_excerpt)** | 尚未讀取 `fulltext_excerpt` 全文。**嚴禁逕行逐字引述**，須取得理由全文後方可引述。 |
 | 📘 | **法學文獻（學說見解）** | 來自私有庫之學說論著。出處已核實，作為法理補充，不具裁判拘束力。 |
 | 🟡 | **非官方或次級轉述** | 僅查得網路轉述，未核對官方裁判字號或文獻原文。須標記「原文待核」。 |
+| 🟡 | **僅經 taiwan-legal-db 核對** | 裁判僅由 `taiwan-legal-db` 取得，尚未經 `twlegalrag` 調卷納入 bundle，無法通過 `scripts/check.py` 驗收。正式文書引用前須補做 `twlegalrag` 調卷，或由律師決定是否引用。 |
+| 🟡 | **函釋效力標示不一致** | `twlegalrag` 的 `status` 與 `taiwan-legal-db` 顯示的官網「停止適用／現行」標示不一致。以官網標示為準並提請律師複核。 |
+| 🟡 | **來源暫時無法查詢** | `taiwan-legal-db` 回報官網驗證失敗或逾時。不得記為「查無資料」，須註明待補查。 |
 | 🟡 | **長裁判截斷風險** | `fulltext_complete: false`，裁判超過 12,000 字僅截取前段。引用時須留意後段主文。 |
 | ⚠️ | **事實脈絡差異 (Distinguishable)** | 裁判法理雖好，但前案事實與本案存在重大出入，有被對造區辨駁回之風險。 |
 | ⚠️ | **定錨偏誤風險** | AI 過度依賴單一漂亮判決或單一學者見解，忽略主流實務抗辯之風險。 |
