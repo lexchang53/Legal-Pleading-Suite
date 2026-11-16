@@ -181,16 +181,18 @@ def auto_fix_markdown(md_path: str) -> str:
                         corrections.append((lineno, '理由段落誤加「民國」紀元前綴，已移除', original, fixed))
                         line = fixed
 
-        # ── 規則 3：具狀人行缺少半形冒號 ──────────────────────────────
-        _SIGNATURE_ROLES = ['具狀人', '特別代理人', '訴訟代理人', '複代理人', '法定代理人', '選任辯護人', '代理人']
-        for role in _SIGNATURE_ROLES:
-            pat = re.compile(r'^' + re.escape(role) + r'[　 ]+([^：:].+)$')
-            mm = pat.match(line.strip())
-            if mm:
-                fixed = f'{role}：{mm.group(1)}'
-                corrections.append((lineno, f'「{role}」後方缺少冒號（：），已補上', original, fixed))
-                line = fixed
-                break
+        # ── 規則 3：狀尾簽章區（「公鑒」之後）的具狀人行缺少冒號 ──────────
+        # 狀首稱謂行依 phase5 規則③不加冒號，故本規則只在「公鑒」之後生效。
+        if seen_gongjian:
+            _SIGNATURE_ROLES = ['具狀人', '特別代理人', '訴訟代理人', '複代理人', '法定代理人', '選任辯護人', '代理人']
+            for role in _SIGNATURE_ROLES:
+                pat = re.compile(r'^' + re.escape(role) + r'[　 ]+([^：:].+)$')
+                mm = pat.match(line.strip())
+                if mm:
+                    fixed = f'{role}：{mm.group(1)}'
+                    corrections.append((lineno, f'「{role}」後方缺少冒號（：），已補上', original, fixed))
+                    line = fixed
+                    break
 
         # ── 規則 4：狀尾日期缺少「中華民國」前綴 ────────────────────
         if seen_gongjian:

@@ -83,10 +83,24 @@ IDENTITY_ROLES = re.compile(
     r'^(?!案\s*號|股\s*別|訴\s*訟\s*標\s*的|為\s*就|主\s*旨|地\s*址|電\s*話|電子郵件|Email|被\s*證|甲\s*證|上\s*證)([^\s\uff1a:]{2,10})([\uff1a:\s]+)(?=[^\s])'
 )
 
-CONTINUATION_KEYWORDS = re.compile(
-    r'(地址[：:]?|地址請詳卷|住[：:]?|住所[：:]?|設[：:]?|居[：:]?|通訊地址[：:]?|送達地址[：:]?|'
+_CONT_BASE = (
+    r'地址[：:]?|地址請詳卷|住[：:]?|住所[：:]?|設[：:]?|居[：:]?|通訊地址[：:]?|送達地址[：:]?|'
     r'電話[：:]?|電子郵件[：:]?|[Ee]-?[Mm]ail[：:]?|傳真[：:]?|統一編號[：:]?|統編[：:]?|'
-    r'身分證明文件字號[：:]?|身分證[字號]*[：:]?|律師事務所[：:]?|事務所[：:]?|同上|地址同上|請詳卷)'
+    r'身分證明文件字號[：:]?|身分證[字號]*[：:]?|同上|地址同上|請詳卷'
+)
+
+# 在整行／姓名後方搜尋第一筆續行資訊時使用。
+# 「事務所」只在兩種情形視為續行起點：
+#   1. 帶冒號的標籤「事務所：」
+#   2. 空白之後、以「事務所」結尾的一整段（如「 國際通商法律事務所」）
+# 不在字詞中間切開，避免「國際通商法律事務所」被切成「國際通商法律／事務所」。
+CONTINUATION_KEYWORDS = re.compile(
+    r'(' + r'事務所[：:]|(?<=\s)\S*事務所[：:]?|' + _CONT_BASE + r')'
+)
+
+# 已依空白切好的單一片段，判斷其開頭是否為新的一筆續行資訊時使用。
+_CONT_TOKEN_START = re.compile(
+    r'(' + r'\S*事務所[：:]?|' + _CONT_BASE + r')'
 )
 
 
@@ -250,7 +264,7 @@ def write_identity_paragraph(doc, style_name, text):
         
         for part in parts:
             # 只要該片段的開頭符合連續資訊關鍵字，就視為新的一筆資料
-            if CONTINUATION_KEYWORDS.match(part):
+            if _CONT_TOKEN_START.match(part):
                 if current_detail:
                     details_list.append(current_detail)
                 current_detail = part
